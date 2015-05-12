@@ -1,12 +1,119 @@
-require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "atnf/skyCoordinate" ],
-  function(domConstruct, xhr, dom, skyCoord) {
+require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "atnf/skyCoordinate",
+	   "atnf/base", "dojo/number", "dojox/charting/Chart", "dojox/charting/SimpleTheme",
+	   "dojox/charting/themes/ThreeD",
+	   "dojo/on", "dojo/dom-geometry", "dojo/window",
+	   "dojox/charting/plot2d/Scatter", "dojox/charting/plot2d/Markers",
+	   "dojox/charting/plot2d/Lines", "dojox/charting/plot2d/Default",
+	   "dojox/charting/axis2d/Default", "dojo/domReady!" ],
+  function(domConstruct, xhr, dom, skyCoord, atnf, number, Chart, SimpleTheme, theme, on, domGeom,
+	   win) {
+
+      // Take a flux model and return the flux density at the
+      // specified frequency.
+      var fluxModel2Density = function(model, frequency) {
+	  // The frequency should be in MHz, but the model will require
+	  // it in GHz.
+	  var f = frequency / 1000;
+	  var isLog = (model[model.length - 1] === 'log');
+	  if (isLog) {
+	      f = Math.log(f) / Math.log(10);
+	  }
+	  var s = parseFloat(model[0]);
+	  for (var i = 1; i < model.length; i++) {
+	      if (i === model.length - 1) {
+		  break;
+	      }
+	      s += parseFloat(model[i]) * Math.pow(f, i);
+	  }
+	  if (isLog) {
+	      s = Math.pow(10, s);
+	  }
+	  return s;
+      };
+      
+      // Take a flux model and return the log S - log v slope
+      // (the spectral index) at a specified frequency, by
+      // taking the derivative and evaluating.
+      var fluxModel2Slope = function(model, frequency) {
+	  // The frequency should be in MHz, but the model will require
+	  // it in GHz.
+	       var isLog = (model[model.length - 1] === 'log');
+	  var f = Math.log(frequency / 1000) / Math.log(10);
+	  // This only works if we have a log/log model.
+	  if (!isLog) {
+	      // We get the derivative of the general function
+	      // S = a + bv + cv^2
+	      // after being transformed to log S
+	      // log S = log(a + bv + cv^2)
+	      // by substituting x = log v, thus v = 10^x
+	      // Then dlog S/dx is solved by Wolfram Alpha to be
+	      // 10^x (b + 2^(x+1) * 5^x * c) / (a + 10^x * (b + c * 10^x))
+	      
+	      // Check that we only have order 2 or below.
+	      if ((model.length - 1) > 3) {
+		  return null;
+	      }
+	      var a = (model.length >= 2) ? parseFloat(model[0]) : 0;
+	      var b = (model.length >= 3) ? parseFloat(model[1]) : 0;
+	      var c = (model.length == 4) ? parseFloat(model[2]) : 0;
+	      var s = Math.pow(10, f) * (b + Math.pow(2, (f + 1)) *
+					 Math.pow(5, f) * c) /
+		  (a + Math.pow(10, f) * (b + c * Math.pow(10, f)));
+	      return s;
+	       }
+	  var s = 0;
+	  for (var i = 1; i < model.length; i++) {
+	      if (i === model.length - 1) {
+		  break;
+	      }
+	      s += parseFloat(model[i]) * i * Math.pow(f, (i - 1));
+	  }
+	  return s;
+      };
+
+
+      // The arrays controlling the layout of the measurement tables.
+      var headCells = [ "MJD", "Epoch", "RA", "Dec", "Flux Density (Jy/beam)",
+			"Spectral Index", "Closure Phase (deg)", "Defect (%)" ]
+      var cellIds = [ 'mjd', 'epoch', 'ra', 'dec', 'flux', 'specind', 'closure', 'defect' ];
+      var frequencyEval = 4500; // MHz
+      var cellProcess = [
+	  // MJD
+	  function(o, i) { return o.mjd[i]; },
+	  // Epoch
+	  function(o, i) { return o.epochs[i]; },
+	  // RA
+	  function(o, i) { return o.rightAscension[i]; },
+	  // Dec
+	  function(o, i) { return o.declination[i]; },
+	  // Flux Density
+	  function(o, i) {
+	      var fd = number.round(fluxModel2Density(o.fluxDensityFit[i].fitCoefficients,
+						      frequencyEval), 3);
+	      return (fd + " +/- " + o.fluxDensityFit[i].fitScatter);
+	  },
+	  // Spectral Index
+	  function(o, i) {
+	      var si = number.round(fluxModel2Slope(o.fluxDensityFit[i].fitCoefficients,
+						    frequencyEval), 3);
+	      return si;
+	  },
+	  // Closure Phase
+	  function(o, i) { return o.closurePhase[i]; },
+	  // Defect
+	  function(o, i) { return o.defect[i]; }
+      ];
+
+      // The theme for our plots.
+      var myTheme = new SimpleTheme();
 
       // The list of all sources.
       var ateseSources = [];
 
       var sourceList = [];
 
-      // Sort the sources.
+      // Some functions to sort the sources in different ways.
+      // This function sorts by ascending right ascension.
       var sortByRA = function(a, b) {
 	  var ara = ateseSources[a].coordinate.toJ2000().rightAscension.toDegrees();
 	  var bra = ateseSources[b].coordinate.toJ2000().rightAscension.toDegrees();
@@ -14,31 +121,216 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "atnf/skyCoordi
 	  return (ara - bra);
       };
       
+      // Sort an array in ascending order and return a list of the sorted
+      // indices.
+      var sortWithIndices = function(sarr) {
+	  var srta = []
+	  // Add the index to each element.
+	  for (var i = 0; i < sarr.length; i++) {
+	      srta.push([ sarr[i], i ]);
+	  }
+	  srta.sort(function(a, b) {
+	      return a[0] < b[0] ? -1 : 1;
+	  });
+	  for (var j = 0; j < srta.length; j++) {
+	      srta[j] = srta[j][1];
+	  }
+
+	  return srta;
+      };
+
       var sortSources = function() {
 	  sourceList.sort(sortByRA);
+      };
+
+      // This function makes a panel on the page for a named source.
+      var makeSourcePanel = function(src) {
+	  // Make the container div; this will be returned later.
+	  var sdiv = domConstruct.create('div', {
+	      'id': "source-" + src,
+	      'class': "source-div"
+	  });
+
+	  // How many epochs has this source been observed in?
+	  var nEpochs = ateseSources[src].epochs.length;
+
+	  // The title is the RA and Dec of the source, along with the
+	  // number of epochs it has been observed in.
+	  var titleText = src.toUpperCase() +
+	      " (" + ateseSources[src].rightAscension[0] + ", " +
+	      ateseSources[src].declination[0] + ") [ " +
+	      nEpochs + " epoch" + ((nEpochs > 1) ? "s" : "") + " ]";
+
+	  // Make the title of the panel.
+	  var stitle = domConstruct.create('div', {
+	      'class': "source-div-title",
+	      'innerHTML': titleText
+	  }, sdiv);
+
+	  // Make the div for the plot.
+	  var phdiv = domConstruct.create('div', {
+	      'class': "plotholder-div"
+	  }, sdiv);
+	  var pdiv = domConstruct.create('div', {
+	      'id': 'plot-' + src,
+	      'class': "plot-div"
+	  }, phdiv);
+
+	  // Make the div for the table.
+	  var tdiv = domConstruct.create('div', {
+	      'id': 'table-' + src,
+	      'class': "table-div"
+	  }, sdiv);
+
+	  // Make the measurements table.
+	  var mTable = domConstruct.create('table', {
+	      'class': "source-div-measurements-table",
+	  }, tdiv);
+
+	  // Make the header for the table.
+	  var mHead = domConstruct.create('thead', null, mTable);
+	  var mHeadRow = domConstruct.create('tr', null, mHead);
+
+	  for (var i = 0; i < headCells.length; i++) {
+	      var mhCell = domConstruct.create('td', {
+		  'innerHTML': headCells[i]
+	      }, mHeadRow);
+	  }
+
+	  // Make the body for the table - we don't populate this, that's
+	  // up to another routine.
+	  var mBody = domConstruct.create('tbody', {
+	      'id': 'measurements-' + src
+	  }, mTable);
+
+	  // The clearing div.
+	  var cdiv = domConstruct.create('div', {
+	      'class': "clear-div"
+	  }, sdiv);
+
+	  return sdiv;
+      };
+
+      // This function makes the plot for a source.
+      var chartFont = 'normal normal bold 8pt Source Sans Pro';
+      var makeSourcePlot = function(src) {
+	  if (ateseSources[src].epochs.length < 2) {
+	      return;
+	  }
+
+	  // Make the series.
+	  var fluxes = [];
+	  var maxFlux = 0;
+	  var meas = ateseSources[src];
+	  for (var i = 0; i < meas.mjd.length; i++) {
+	      var tflux = fluxModel2Density(meas.fluxDensityFit[i].fitCoefficients,
+					    frequencyEval)
+	      maxFlux = (maxFlux < tflux) ? tflux : maxFlux;
+	      fluxes.push({
+		  'x': meas.mjd[i],
+		  'y': tflux
+	      });
+	  }
+
+	  // Don't do anything if we have no fluxes.
+	  if (fluxes.length == 0) {
+	      return;
+	  }
+
+	  // Make the chart.
+	  var fchart = new Chart('plot-' + src).setTheme(theme);
+
+	  // Get the axis ranges.
+	  var minMjd = Math.min.apply(this, ateseSources[src].mjd) - 20;
+	  var maxMjd = Math.max.apply(this, ateseSources[src].mjd) + 20;
+
+	  fchart.addPlot('default', { 'type': 'Scatter' });
+	  fchart.addAxis('x', {
+	      'titleOrientation': 'away',
+	      'font': chartFont,
+	      'titleFont': chartFont,
+	      'minorLabels': false,
+	      'natural': false,
+	      'min': minMjd,
+	      'max': maxMjd
+	  });
+	  fchart.addAxis('y', {
+	      'font': chartFont,
+	      'titleFont': chartFont,
+	      'titleOrientation': 'axis',
+	      'natural': false,
+	      'fixed': false,
+	      'vertical': true,
+	      'fixLower': 'major',
+	      'fixUpper': 'major',
+	      'min': 0.0,
+	      'max': maxFlux * 1.2
+	  });
+
+	  fchart.addSeries("fluxes-" + src, fluxes);
+	  fchart.render();
+
+      };
+
+      // This function arranges the data and puts it in the appropriate
+      // measurements table.
+      var populateMeasurements = function(src) {
+	  // Find the table we will populate.
+	  var mBody = dom.byId('measurements-' + src);
+	  domConstruct.empty(mBody);
+
+	  // The measurements we have.
+	  var meas = ateseSources[src];
+
+	  // Sort the arrays by ascending MJD.
+	  var sind = sortWithIndices(meas.mjd);
+
+	  // Populate the table.
+	  for (var i = 0; i < sind.length; i++) {
+	      var mRow = domConstruct.create('tr', null, mBody);
+	      for (var j = 0; j < headCells.length; j++) {
+		  var mCell = domConstruct.create('td', {
+		      'innerHTML': cellProcess[j](meas, sind[i])
+		  }, mRow);
+	      }
+	  }
+
       };
       
       // Make the page.
       var populatePage = function() {
 	  var tl = dom.byId('source-area');
 	  for (var i = 0; i < sourceList.length; i++) {
-	      var sdiv = domConstruct.create('div', {
-		  'id': "source-" + sourceList[i],
-		  'class': "source-div"
-	      });
+	      var sdiv = makeSourcePanel(sourceList[i]);
 	      tl.appendChild(sdiv);
-	      var stitle = domConstruct.create('div', {
-		  'class': "source-div-title",
-		  'innerHTML': sourceList[i].toUpperCase()
-	      });
-	      sdiv.appendChild(stitle);
+	      
+	      populateMeasurements(sourceList[i]);
+	      ateseSources[sourceList[i]].plotMade = false;
 	  }
       };
+	     
+      // Determine if an element is in the viewport.
+      var isInViewport = function(node) {
+          var nodePos = domGeom.position(node);
+          var viewport = win.getBox();
+          return (nodePos.x > 0) && (nodePos.x < viewport.w) && (nodePos.y > 0) && (nodePos.y < viewport.h);
+      };
 
+      // This function is used to see if a plot is within the viewport,
+      // and if so we make it, if it hasn't already been made.
+      var scrollCheck = function(evt) {
+	  for (var i = 0; i < sourceList.length; i++) {
+	      if (isInViewport(dom.byId("plot-" + sourceList[i])) &&
+		  ateseSources[sourceList[i]].plotMade === false) {
+		  makeSourcePlot(sourceList[i]);
+		  ateseSources[sourceList[i]].plotMade = true;
+	      }
+	  }
+      };
+      
       // Get the ATESE catalogue.
-      xhr("datarelease/datarelease_catalogue.json", {
+      xhr.get("datarelease/datarelease_catalogue.json", {
 	  'handleAs': "json",
-	  'async': true
       }).then(function(data) {
 	  if (typeof(data) !== 'undefined') {
 	      // Compile the sources.
@@ -55,7 +347,13 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "atnf/skyCoordi
 	      }
 	      sortSources();
 	      populatePage();
+	      // Attach the scroll event.
+	      on(window, 'scroll', scrollCheck);
+	      // And run it straight away.
+	      scrollCheck(null);
 	  }
       });
+
+      
       
   });

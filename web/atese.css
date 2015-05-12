@@ -2,3 +2,18 @@ body { font-family: 'Source Sans Pro', sans-serif; }
 h1 { font-weight: bold; font-size: 1.3em; margin: 0.6em; }
 
 #source-area { padding: 0.6em; }
+.source-div { width: 95%; margin: 0.8em auto; border: 2px solid black; }
+.source-div-title { padding: 0.2em; background-color: #ffcc99; font-family: 'Cousine', monospace;
+		    font-weight: bold; color: black; border: 1px dotted black; }
+.source-div-measurements-table { border-collapse: collapse; border: 2px solid #333;
+				 margin: 0.4em; }
+.source-div-measurements-table > thead td {
+    background-color: black; color: white; font-family: 'Cousine', monospace;
+    font-size: 0.9em; font-weight: bold; border: 1px solid white; padding: 0.4em; }
+.source-div-measurements-table > tbody td {
+    font-family: 'Cousine', monospace; font-size: 0.8em; border: 1px solid #333;
+    padding: 0.3em; text-align: left; }
+.plot-div { width: 300px; height: 100px; border: 1px solid black; margin: 0; }
+.clear-div { clear: both; }
+.plotholder-div { margin: 0.6em; float: left; }
+.table-div { margin: 0.6em; }
