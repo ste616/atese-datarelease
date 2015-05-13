@@ -1,12 +1,13 @@
 require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "atnf/skyCoordinate",
 	   "atnf/base", "dojo/number", "dojox/charting/Chart", "dojox/charting/SimpleTheme",
 	   "dojox/charting/themes/ThreeD",
-	   "dojo/on", "dojo/dom-geometry", "dojo/window",
+	   "dojo/on", "dojo/dom-geometry", "dojo/window", "dojo/dom-attr", "dojo/dom-class",
+	   "dojo/query",
 	   "dojox/charting/plot2d/Scatter", "dojox/charting/plot2d/Markers",
 	   "dojox/charting/plot2d/Lines", "dojox/charting/plot2d/Default",
-	   "dojox/charting/axis2d/Default", "dojo/domReady!" ],
+	   "dojox/charting/axis2d/Default", "dojo/NodeList-dom", "dojo/domReady!" ],
   function(domConstruct, xhr, dom, skyCoord, atnf, number, Chart, SimpleTheme, theme, on, domGeom,
-	   win) {
+	   win, domAttr, domClass, query) {
 
       // Take a flux model and return the flux density at the
       // specified frequency.
@@ -111,7 +112,9 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "atnf/skyCoordi
       var ateseSources = [];
 
       var sourceList = [];
-
+      // The node list of all the panels.
+      var panelList = null;
+      
       // Some functions to sort the sources in different ways.
       // This function sorts by ascending right ascension.
       var sortByRA = function(a, b) {
@@ -215,6 +218,10 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "atnf/skyCoordi
       var chartFont = 'normal normal bold 8pt Source Sans Pro';
       var makeSourcePlot = function(src) {
 	  if (ateseSources[src].epochs.length < 2) {
+	      // Just put the text "NO IMAGE" in the box.
+	      domAttr.set('plot-' + src, 'innerHTML', "NO PLOT");
+	      domClass.add('plot-' + src, 'plot-no-plot');
+	      
 	      return;
 	  }
 
@@ -301,29 +308,35 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "atnf/skyCoordi
       var populatePage = function() {
 	  var tl = dom.byId('source-area');
 	  for (var i = 0; i < sourceList.length; i++) {
+	      // Make the source panel and put it on the page.
 	      var sdiv = makeSourcePanel(sourceList[i]);
 	      tl.appendChild(sdiv);
-	      
+
 	      populateMeasurements(sourceList[i]);
 	      ateseSources[sourceList[i]].plotMade = false;
 	  }
       };
 	     
       // Determine if an element is in the viewport.
+      var viewport = win.getBox();
       var isInViewport = function(node) {
-          var nodePos = domGeom.position(node);
-          var viewport = win.getBox();
-          return (nodePos.x > 0) && (nodePos.x < viewport.w) && (nodePos.y > 0) && (nodePos.y < viewport.h);
+          var nodePos = domGeom.position(node);;
+          return (nodePos.x > 0) && (nodePos.x < viewport.w) && (nodePos.y > (-1 * viewport.h)) && (nodePos.y < (viewport.h * 2));
       };
 
       // This function is used to see if a plot is within the viewport,
       // and if so we make it, if it hasn't already been made.
       var scrollCheck = function(evt) {
+	  var found = false;
 	  for (var i = 0; i < sourceList.length; i++) {
-	      if (isInViewport(dom.byId("plot-" + sourceList[i])) &&
-		  ateseSources[sourceList[i]].plotMade === false) {
+	      if (ateseSources[sourceList[i]].plotMade === false &&
+		  isInViewport(dom.byId('source-' + sourceList[i]))) {
+		  found = true;
 		  makeSourcePlot(sourceList[i]);
 		  ateseSources[sourceList[i]].plotMade = true;
+	      } else if (found) {
+		  // We've gone off the end of the page.
+		  break;
 	      }
 	  }
       };
@@ -347,6 +360,10 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "atnf/skyCoordi
 	      }
 	      sortSources();
 	      populatePage();
+
+	      // Make the node list of all the panels.
+	      panelList = query(".source-div");
+
 	      // Attach the scroll event.
 	      on(window, 'scroll', scrollCheck);
 	      // And run it straight away.
