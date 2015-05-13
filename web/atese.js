@@ -5,7 +5,8 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "atnf/skyCoordi
 	   "dojo/query",
 	   "dojox/charting/plot2d/Scatter", "dojox/charting/plot2d/Markers",
 	   "dojox/charting/plot2d/Lines", "dojox/charting/plot2d/Default",
-	   "dojox/charting/axis2d/Default", "dojo/NodeList-dom", "dojo/domReady!" ],
+	   "dojox/charting/axis2d/Default", "dojo/NodeList-dom", "dojox/charting/plot2d/Areas",
+	   "dojo/domReady!" ],
   function(domConstruct, xhr, dom, skyCoord, atnf, number, Chart, SimpleTheme, theme, on, domGeom,
 	   win, domAttr, domClass, query) {
 
@@ -78,6 +79,10 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "atnf/skyCoordi
 			"Spectral Index", "Closure Phase (deg)", "Defect (%)" ]
       var cellIds = [ 'mjd', 'epoch', 'ra', 'dec', 'flux', 'specind', 'closure', 'defect' ];
       var frequencyEval = 4500; // MHz
+      // The spectral indices considered to be the range of "flat".
+      // A spectral index more positive will be considered inverted, and more
+      // negative considered steep.
+      var flatRange = [ -0.2, 0.2 ];
       var cellProcess = [
 	  // MJD
 	  function(o, i) { return o.mjd[i]; },
@@ -91,12 +96,21 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "atnf/skyCoordi
 	  function(o, i) {
 	      var fd = number.round(fluxModel2Density(o.fluxDensityFit[i].fitCoefficients,
 						      frequencyEval), 3);
+	      o.computedFluxDensity[i] = fd;
 	      return (fd + " +/- " + o.fluxDensityFit[i].fitScatter);
 	  },
 	  // Spectral Index
 	  function(o, i) {
 	      var si = number.round(fluxModel2Slope(o.fluxDensityFit[i].fitCoefficients,
 						    frequencyEval), 3);
+	      o.computedSpectralIndex[i] = si;
+	      if (si < flatRange[0]) {
+		  o.siClassification[i] = "steep";
+	      } else if (si > flatRange[1]) {
+		  o.siClassification[i] = "inverted";
+	      } else {
+		  o.siClassification[i] = "flat";
+	      }
 	      return si;
 	  },
 	  // Closure Phase
@@ -106,7 +120,21 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "atnf/skyCoordi
       ];
 
       // The theme for our plots.
-      var myTheme = new SimpleTheme();
+      var myTheme = new SimpleTheme({
+	  'markers': {
+	      'CROSS': "m0,-3 l0,6 m-3,-3 l6,0",
+	      'CIRCLE': "m-3,0 c0,-4 6,-4 6,0 m-6,0 c0,4 6,4 6,0",
+	      'SQUARE': "m-3,-3 l0,6 6,0 0,-6 z", 
+	      'DIAMOND': "m0,-3 l3,3 -3,3 -3,-3 z", 
+	      'TRIANGLE': "m-3,3 l3,-6 3,6 z", 
+	      'TRIANGLE_INVERTED': "m-3,-3 l3,6 3,-6 z"
+	  }
+      });
+      var plotProperties = {
+	  'inverted': [ { 'stroke': { 'color': 'red' }, 'fill': 'red', 'marker': myTheme.markers.TRIANGLE } ],
+	  'flat': [ { 'stroke': { 'color': 'blue' } , 'fill': 'blue', 'marker': myTheme.markers.CIRCLE } ],
+	  'steep': [ { 'stroke': { 'color': 'green' }, 'fill': 'green', 'marker': myTheme.markers.TRIANGLE_INVERTED } ]
+      };
 
       // The list of all sources.
       var ateseSources = [];
@@ -214,6 +242,17 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "atnf/skyCoordi
 	  return sdiv;
       };
 
+      var averageArray = function() {
+	  var s = 0.0;
+	  var args = arguments;
+	  for (var a in args) {
+	      s += args[a];
+	  }
+	  s /= args.length;
+
+	  return s;
+      };
+      
       // This function makes the plot for a source.
       var chartFont = 'normal normal bold 8pt Source Sans Pro';
       var makeSourcePlot = function(src) {
@@ -226,30 +265,35 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "atnf/skyCoordi
 	  }
 
 	  // Make the series.
-	  var fluxes = [];
-	  var maxFlux = 0;
+	  var fluxes = {
+	      'inverted': [], 'flat': [], 'steep': []
+	  };
 	  var meas = ateseSources[src];
+	  var maxFlux = Math.max.apply(this, meas.computedFluxDensity);
+	  var avgFlux = averageArray.apply(this, meas.computedFluxDensity);
+	  console.log(meas.computedFluxDensity);
+	  console.log(avgFlux);
 	  for (var i = 0; i < meas.mjd.length; i++) {
-	      var tflux = fluxModel2Density(meas.fluxDensityFit[i].fitCoefficients,
-					    frequencyEval)
-	      maxFlux = (maxFlux < tflux) ? tflux : maxFlux;
-	      fluxes.push({
+	      var tflux = {
 		  'x': meas.mjd[i],
-		  'y': tflux
-	      });
+		  'y': meas.computedFluxDensity[i]
+	      };
+	      fluxes[meas.siClassification[i]].push(tflux);
 	  }
 
 	  // Don't do anything if we have no fluxes.
-	  if (fluxes.length == 0) {
+	  var totalFluxes = fluxes.inverted.length + fluxes.flat.length +
+	      fluxes.steep.length;
+	  if (totalFluxes === 0) {
 	      return;
 	  }
 
 	  // Make the chart.
-	  var fchart = new Chart('plot-' + src).setTheme(theme);
+	  var fchart = new Chart('plot-' + src).setTheme(myTheme);
 
 	  // Get the axis ranges.
-	  var minMjd = Math.min.apply(this, ateseSources[src].mjd) - 20;
-	  var maxMjd = Math.max.apply(this, ateseSources[src].mjd) + 20;
+	  var minMjd = Math.min.apply(this, meas.mjd) - 20;
+	  var maxMjd = Math.max.apply(this, meas.mjd) + 20;
 
 	  fchart.addPlot('default', { 'type': 'Scatter' });
 	  fchart.addAxis('x', {
@@ -273,8 +317,20 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "atnf/skyCoordi
 	      'min': 0.0,
 	      'max': maxFlux * 1.2
 	  });
+	  fchart.addPlot('average', { 'type': 'Areas', 'lines': false,
+				      'areas': true, 'markers': false });
+	  var avgSeries = [ { 'x': minMjd, 'y': avgFlux },
+			    { 'x': maxMjd, 'y': avgFlux } ];
+	  fchart.addSeries('average-flux', avgSeries, {
+	      'plot': 'average', 'fill': "#cccccc", 'stroke': { 'color': "#cccccc" }  });
 
-	  fchart.addSeries("fluxes-" + src, fluxes);
+	  for (var s in fluxes) {
+	      if (fluxes.hasOwnProperty(s) &&
+		  fluxes[s].length > 0) {
+		  fchart.addSeries("fluxes-" + s + "-" + src,
+				   fluxes[s], plotProperties[s][0]);
+	      }
+	  }
 	  fchart.render();
 
       };
@@ -356,6 +412,10 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "atnf/skyCoordi
 			  data[src].declination[0]
 		      ]);
 		      ateseSources[src].coordinate = sc;
+		      // Add some computed arrays.
+		      ateseSources[src].computedFluxDensity = [];
+		      ateseSources[src].computedSpectralIndex = [];
+		      ateseSources[src].siClassification = [];
 		  }
 	      }
 	      sortSources();
