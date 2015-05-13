@@ -440,11 +440,20 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "atnf/skyCoordi
 	  if (domAttr.get('selector-nepochs', 'checked')) {
 	      minEpochs = domAttr.get('input-nepochs', 'value');
 	  }
+	  var maxDefect = 1e6;
+	  if (domAttr.get('selector-defect', 'checked')) {
+	      maxDefect = domAttr.get('input-defect', 'value');
+	  }
+	  
 	  for (var src in ateseSources) {
 	      if (ateseSources.hasOwnProperty(src)) {
 		  // Do our checks.
 		  var includeSource = true;
 		  if (ateseSources[src].epochs.length < minEpochs) {
+		      includeSource = false;
+		  }
+
+		  if (Math.min.apply(this, ateseSources[src].defect) > maxDefect) {
 		      includeSource = false;
 		  }
 
