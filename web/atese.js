@@ -271,8 +271,6 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "atnf/skyCoordi
 	  var meas = ateseSources[src];
 	  var maxFlux = Math.max.apply(this, meas.computedFluxDensity);
 	  var avgFlux = averageArray.apply(this, meas.computedFluxDensity);
-	  console.log(meas.computedFluxDensity);
-	  console.log(avgFlux);
 	  for (var i = 0; i < meas.mjd.length; i++) {
 	      var tflux = {
 		  'x': meas.mjd[i],
@@ -317,6 +315,8 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "atnf/skyCoordi
 	      'min': 0.0,
 	      'max': maxFlux * 1.2
 	  });
+
+	  // The plot showing the average flux density level.
 	  fchart.addPlot('average', { 'type': 'Areas', 'lines': false,
 				      'areas': true, 'markers': false });
 	  var avgSeries = [ { 'x': minMjd, 'y': avgFlux },
@@ -324,6 +324,7 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "atnf/skyCoordi
 	  fchart.addSeries('average-flux', avgSeries, {
 	      'plot': 'average', 'fill': "#cccccc", 'stroke': { 'color': "#cccccc" }  });
 
+	  // Overplot the flux densities and spectral index indications.
 	  for (var s in fluxes) {
 	      if (fluxes.hasOwnProperty(s) &&
 		  fluxes[s].length > 0) {
@@ -363,6 +364,7 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "atnf/skyCoordi
       // Make the page.
       var populatePage = function() {
 	  var tl = dom.byId('source-area');
+	  domConstruct.empty(tl);
 	  for (var i = 0; i < sourceList.length; i++) {
 	      // Make the source panel and put it on the page.
 	      var sdiv = makeSourcePanel(sourceList[i]);
@@ -431,6 +433,29 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "atnf/skyCoordi
 	  }
       });
 
-      
+      // Make the selection button do things.
+      on(dom.byId('button-show-sources'), 'click', function(evt) {
+	  sourceList = [];
+	  var minEpochs = 1;
+	  if (domAttr.get('selector-nepochs', 'checked')) {
+	      minEpochs = domAttr.get('input-nepochs', 'value');
+	  }
+	  for (var src in ateseSources) {
+	      if (ateseSources.hasOwnProperty(src)) {
+		  // Do our checks.
+		  var includeSource = true;
+		  if (ateseSources[src].epochs.length < minEpochs) {
+		      includeSource = false;
+		  }
+
+		  if (includeSource) {
+		      sourceList.push(src);
+		  }
+	      }
+	  }
+	  sortSources();
+	  populatePage();
+	  scrollCheck();
+      });
       
   });

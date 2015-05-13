@@ -11,7 +11,25 @@
     <script src="atese.js"></script>
   </head>
   <body>
-    <h1>ATESE Data</h1>
+    <div id="selection-area">
+      <div id="title-area">
+	<h1>ATESE Data</h1>
+	<h3>Beta_2015-May-13</h3>
+      </div>
+      <div id="selector-area">
+	<h2>Show sources with</h2>
+	<div>
+	  <input type="checkbox" id="selector-nepochs" value="yes">
+	  <label for="selector-nepochs">
+	    <input type="text" id="input-nepochs" value="2" size="3"> or more epochs
+	  </label>
+	</div>
+	<div>
+	  <button type="button" id="button-show-sources">Do it!</button>
+	</div>
+      </div>
+      <div class="clear-div"></div>
+    </div>
     <div id="source-area"></div>
   </body>
 </html>

@@ -1,7 +1,9 @@
 body { font-family: 'Source Sans Pro', sans-serif; }
 h1 { font-weight: bold; font-size: 1.3em; margin: 0.6em; }
+h2 { font-weight: bold; font-size: 1.2em; margin: 0.4em; }
+h3 { font-weight: bold; font-size: 1.1em; margin: 0.2em; }
 
-#source-area { padding: 0.6em; }
+#source-area { padding: 0.6em; margin-left: 10%; }
 .source-div { width: 95%; margin: 0.8em auto; border: 2px solid black; }
 .source-div-title { padding: 0.2em; background-color: #ffcc99; font-family: 'Cousine', monospace;
 		    font-weight: bold; color: black; border: 1px dotted black; }
@@ -19,3 +21,55 @@ h1 { font-weight: bold; font-size: 1.3em; margin: 0.6em; }
 .clear-div { clear: both; }
 .plotholder-div { margin: 0.6em; float: left; }
 .table-div { margin: 0.6em; }
+#selection-area { background-color: #87cefa; position: fixed; width: 10%; }
+#title-area { background-color: #2f4f4f; color: white; padding: 0.3em; }
+#selector-area { padding: 0.3em; }
+
+input[type=checkbox] {
+    position:absolute; z-index:-1000; left:-1000px; overflow: hidden; clip: rect(0 0 0 0); height:1px; width:1px; margin:-1px; padding:0; border:0;
+}
+
+input[type=checkbox] + label {
+    padding-left:26px;
+    height:21px; 
+    display:inline-block;
+    line-height:21px;
+    background-repeat:no-repeat;
+    background-position: 0 0;
+    vertical-align:middle;
+    cursor:pointer;
+    
+}
+
+input[type=checkbox]:checked + label {
+    background-position: 0 -21px;
+}
+
+label {
+    background-image:url(checkbox.png);
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+button {
+  -webkit-border-radius: 10;
+  -moz-border-radius: 10;
+  border-radius: 10px;
+  font-family: 'Source Sans Pro', sans-serif;
+  color: #000000;
+  font-size: 1.2em;
+  background: #ffd700;
+  width: 95%; 
+  padding: 10px 20px 10px 20px;
+  text-decoration: none;
+  margin: 0.3em auto;
+}
+
+button:hover {
+  background: #ffff00;
+  text-decoration: none;
+}
