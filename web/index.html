@@ -36,6 +36,24 @@
 	    abs(closure) <= <input type="text" id="input-closurephase" value="2" size="3"> deg
 	  </label>
 	</div>
+	<div>
+	  <input type="checkbox" id="selector-fluxdensity" value="yes">
+	  <label for="selector-fluxdensity">
+	    flux dens. >= <input type="text" id="input-fluxdensity" value="0.1" size="3"> Jy/beam
+	  </label>
+	</div>
+	<div>
+	  <input type="checkbox" id="selector-variable-si" value="yes">
+	  <label for="selector-variable-si">
+	    variable SI classification
+	  </label>
+	</div>
+	<div>
+	  <input type="checkbox" id="selector-constant-si" value="yes">
+	  <label for="selector-constant-si">
+	    constant SI classification
+	  </label>
+	</div>
 	<h2>Show fluxes at</h2>
 	<div class="move-right">
 	  <input type="text" id="input-fd-frequency" value="4500" size="5">
@@ -43,6 +61,9 @@
 	</div>
 	<div>
 	  <button type="button" id="button-show-sources">Do it!</button>
+	</div>
+	<div class="sources-shown">
+	  <h2>Sources selected: <span id="nsources-selected"></span><h2>
 	</div>
       </div>
       <div class="clear-div"></div>

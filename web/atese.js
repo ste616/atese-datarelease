@@ -373,6 +373,9 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "atnf/skyCoordi
 	      populateMeasurements(sourceList[i]);
 	      ateseSources[sourceList[i]].plotMade = false;
 	  }
+
+	  // Display the number of sources we are showing.
+	  domAttr.set('nsources-selected', 'innerHTML', sourceList.length);
       };
 	     
       // Determine if an element is in the viewport.
@@ -460,6 +463,13 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "atnf/skyCoordi
 	  if (domAttr.get('selector-closurephase', 'checked')) {
 	      maxClosurePhase = domAttr.get('input-closurephase', 'value');
 	  }
+	  var minFluxDensity = 0;
+	  if (domAttr.get('selector-fluxdensity', 'checked')) {
+	      minFluxDensity = domAttr.get('input-fluxdensity', 'value');
+	  }
+
+	  var siRequiredConstant = domAttr.get('selector-constant-si', 'checked');
+	  var siRequiredVariable = domAttr.get('selector-variable-si', 'checked');
 	  
 	  frequencyEval = parseFloat(domAttr.get('input-fd-frequency', 'value')); // MHz
 	  
@@ -478,6 +488,29 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "atnf/skyCoordi
 		  if (Math.min.apply(this, ateseSources[src].absClosurePhase) > maxClosurePhase) {
 		      includeSource = false;
 		  }
+
+		  if (Math.max.apply(this, ateseSources[src].computedFluxDensity) < minFluxDensity) {
+		      includeSource = false;
+		  }
+
+		  var siConstant = ateseSources[src].siClassification.reduce(function(p, c, x, a) {
+		      if (p === c) {
+			  if (x === (a.length - 1)) {
+			      return true;
+			  }
+			  return p;
+		      } else {
+			  return false;
+		      }
+		  });
+
+		  if (siRequiredConstant && !siConstant) {
+		      includeSource = false;
+		  }
+
+		  if (siRequiredVariable && siConstant) {
+		      includeSource = false;
+		  }
 		  
 		  if (includeSource) {
 		      sourceList.push(src);
@@ -488,5 +521,18 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "atnf/skyCoordi
 	  populatePage();
 	  scrollCheck();
       });
+
+      // Ensure that only one of the spectral index checkboxes can
+      // be checked at one time.
+      var checkboxChecker = function(evt) {
+	  if (evt.target.id === 'selector-variable-si') {
+	      domAttr.set('selector-constant-si', 'checked', false);
+	  }
+	  if (evt.target.id === 'selector-constant-si') {
+	      domAttr.set('selector-variable-si', 'checked', false);
+	  }
+      };
+      on(dom.byId('selector-variable-si'), 'change', checkboxChecker);
+      on(dom.byId('selector-constant-si'), 'change', checkboxChecker);
       
   });
