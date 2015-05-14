@@ -14,7 +14,7 @@
     <div id="selection-area">
       <div id="title-area">
 	<h1>ATESE Data</h1>
-	<h3>Beta_2015-May-13</h3>
+	<h3>Beta_2015-May-14</h3>
       </div>
       <div id="selector-area">
 	<h2>Show sources with</h2>
@@ -29,6 +29,17 @@
 	  <label for="selector-defect">
 	    defect <= <input type="text" id="input-defect" value="2" size="3">%
 	  </label>
+	</div>
+	<div>
+	  <input type="checkbox" id="selector-closurephase" value="yes">
+	  <label for="selector-closurephase">
+	    abs(closure) <= <input type="text" id="input-closurephase" value="2" size="3"> deg
+	  </label>
+	</div>
+	<h2>Show fluxes at</h2>
+	<div class="move-right">
+	  <input type="text" id="input-fd-frequency" value="4500" size="5">
+	  <label for="input-fd-frequency">MHz</label>
 	</div>
 	<div>
 	  <button type="button" id="button-show-sources">Do it!</button>

@@ -3,7 +3,7 @@ h1 { font-weight: bold; font-size: 1.3em; margin: 0.6em; }
 h2 { font-weight: bold; font-size: 1.2em; margin: 0.4em; }
 h3 { font-weight: bold; font-size: 1.1em; margin: 0.2em; }
 
-#source-area { padding: 0.6em; margin-left: 10%; }
+#source-area { padding: 0.1em; margin-left: 15em; }
 .source-div { width: 95%; margin: 0.8em auto; border: 2px solid black; }
 .source-div-title { padding: 0.2em; background-color: #ffcc99; font-family: 'Cousine', monospace;
 		    font-weight: bold; color: black; border: 1px dotted black; }
@@ -21,7 +21,7 @@ h3 { font-weight: bold; font-size: 1.1em; margin: 0.2em; }
 .clear-div { clear: both; }
 .plotholder-div { margin: 0.6em; float: left; }
 .table-div { margin: 0.6em; }
-#selection-area { background-color: #87cefa; position: fixed; width: 10%; }
+#selection-area { background-color: #87cefa; position: fixed; width: 15em; }
 #title-area { background-color: #2f4f4f; color: white; padding: 0.3em; }
 #selector-area { padding: 0.3em; }
 
@@ -38,14 +38,7 @@ input[type=checkbox] + label {
     background-position: 0 0;
     vertical-align:middle;
     cursor:pointer;
-    
-}
 
-input[type=checkbox]:checked + label {
-    background-position: 0 -21px;
-}
-
-label {
     background-image:url(checkbox.png);
     -webkit-touch-callout: none;
     -webkit-user-select: none;
@@ -53,6 +46,15 @@ label {
     -moz-user-select: none;
     -ms-user-select: none;
     user-select: none;
+    
+}
+
+input[type=checkbox]:checked + label {
+    background-position: 0 -21px;
+}
+
+.move-right {
+    padding-left: 26px;
 }
 
 button {

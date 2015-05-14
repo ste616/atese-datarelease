@@ -2,13 +2,13 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "atnf/skyCoordi
 	   "atnf/base", "dojo/number", "dojox/charting/Chart", "dojox/charting/SimpleTheme",
 	   "dojox/charting/themes/ThreeD",
 	   "dojo/on", "dojo/dom-geometry", "dojo/window", "dojo/dom-attr", "dojo/dom-class",
-	   "dojo/query",
+	   "dojo/query", "dojox/timing",
 	   "dojox/charting/plot2d/Scatter", "dojox/charting/plot2d/Markers",
 	   "dojox/charting/plot2d/Lines", "dojox/charting/plot2d/Default",
 	   "dojox/charting/axis2d/Default", "dojo/NodeList-dom", "dojox/charting/plot2d/Areas",
 	   "dojo/domReady!" ],
   function(domConstruct, xhr, dom, skyCoord, atnf, number, Chart, SimpleTheme, theme, on, domGeom,
-	   win, domAttr, domClass, query) {
+	   win, domAttr, domClass, query, timing) {
 
       // Take a flux model and return the flux density at the
       // specified frequency.
@@ -78,7 +78,7 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "atnf/skyCoordi
       var headCells = [ "MJD", "Epoch", "RA", "Dec", "Flux Density (Jy/beam)",
 			"Spectral Index", "Closure Phase (deg)", "Defect (%)" ]
       var cellIds = [ 'mjd', 'epoch', 'ra', 'dec', 'flux', 'specind', 'closure', 'defect' ];
-      var frequencyEval = 4500; // MHz
+      var frequencyEval = parseFloat(domAttr.get('input-fd-frequency', 'value')); // MHz
       // The spectral indices considered to be the range of "flat".
       // A spectral index more positive will be considered inverted, and more
       // negative considered steep.
@@ -376,15 +376,21 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "atnf/skyCoordi
       };
 	     
       // Determine if an element is in the viewport.
-      var viewport = win.getBox();
       var isInViewport = function(node) {
           var nodePos = domGeom.position(node);;
-          return (nodePos.x > 0) && (nodePos.x < viewport.w) && (nodePos.y > (-1 * viewport.h)) && (nodePos.y < (viewport.h * 2));
+	  var viewport = win.getBox();
+          return ((nodePos.x > 0) && (nodePos.x < viewport.w) && (nodePos.y > (-1 * viewport.h)) && (nodePos.y < (viewport.h * 2)));
       };
 
+      // We want to make plots only when the user has just finished scrolling,
+      // so the page always appears responsive.
+      var scrollTimer = new timing.Timer(1000); // trigger after 250 ms.
+      
       // This function is used to see if a plot is within the viewport,
       // and if so we make it, if it hasn't already been made.
-      var scrollCheck = function(evt) {
+      var plotCheck = function() {
+	  // Stop the scroll timer.
+	  scrollTimer.stop();
 	  var found = false;
 	  for (var i = 0; i < sourceList.length; i++) {
 	      if (ateseSources[sourceList[i]].plotMade === false &&
@@ -397,6 +403,11 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "atnf/skyCoordi
 		  break;
 	      }
 	  }
+      };
+
+      scrollTimer.onTick = plotCheck;
+      var scrollCheck = function(evt) {
+	  scrollTimer.start();
       };
       
       // Get the ATESE catalogue.
@@ -418,6 +429,7 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "atnf/skyCoordi
 		      ateseSources[src].computedFluxDensity = [];
 		      ateseSources[src].computedSpectralIndex = [];
 		      ateseSources[src].siClassification = [];
+		      ateseSources[src].absClosurePhase = ateseSources[src].closurePhase.map(Math.abs);
 		  }
 	      }
 	      sortSources();
@@ -444,6 +456,12 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "atnf/skyCoordi
 	  if (domAttr.get('selector-defect', 'checked')) {
 	      maxDefect = domAttr.get('input-defect', 'value');
 	  }
+	  var maxClosurePhase = 1e6;
+	  if (domAttr.get('selector-closurephase', 'checked')) {
+	      maxClosurePhase = domAttr.get('input-closurephase', 'value');
+	  }
+	  
+	  frequencyEval = parseFloat(domAttr.get('input-fd-frequency', 'value')); // MHz
 	  
 	  for (var src in ateseSources) {
 	      if (ateseSources.hasOwnProperty(src)) {
@@ -457,6 +475,10 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "atnf/skyCoordi
 		      includeSource = false;
 		  }
 
+		  if (Math.min.apply(this, ateseSources[src].absClosurePhase) > maxClosurePhase) {
+		      includeSource = false;
+		  }
+		  
 		  if (includeSource) {
 		      sourceList.push(src);
 		  }
