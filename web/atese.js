@@ -270,7 +270,7 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "atnf/skyCoordi
 	  };
 	  var meas = ateseSources[src];
 	  var maxFlux = Math.max.apply(this, meas.computedFluxDensity);
-	  var avgFlux = averageArray.apply(this, meas.computedFluxDensity);
+	  var avgFlux = meas.avgFluxDensity;
 	  for (var i = 0; i < meas.mjd.length; i++) {
 	      var tflux = {
 		  'x': meas.mjd[i],
@@ -372,6 +372,11 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "atnf/skyCoordi
 
 	      populateMeasurements(sourceList[i]);
 	      ateseSources[sourceList[i]].plotMade = false;
+
+	      // Calculate the average flux density for the source.
+	      ateseSources[sourceList[i]].avgFluxDensity =
+		  averageArray.apply(this, ateseSources[sourceList[i]].computedFluxDensity);
+	      
 	  }
 
 	  // Display the number of sources we are showing.
@@ -470,6 +475,11 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "atnf/skyCoordi
 
 	  var siRequiredConstant = domAttr.get('selector-constant-si', 'checked');
 	  var siRequiredVariable = domAttr.get('selector-variable-si', 'checked');
+
+	  var minDeviation = 0;
+	  if (domAttr.get('selector-fluxdeviation', 'checked')) {
+	      minDeviation = domAttr.get('input-fluxdeviation', 'value');
+	  }
 	  
 	  frequencyEval = parseFloat(domAttr.get('input-fd-frequency', 'value')); // MHz
 	  
@@ -477,23 +487,26 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "atnf/skyCoordi
 	      if (ateseSources.hasOwnProperty(src)) {
 		  // Do our checks.
 		  var includeSource = true;
-		  if (ateseSources[src].epochs.length < minEpochs) {
+		  var meas = ateseSources[src];
+		  if (meas.epochs.length < minEpochs) {
 		      includeSource = false;
 		  }
 
-		  if (Math.min.apply(this, ateseSources[src].defect) > maxDefect) {
+		  if (Math.min.apply(this, meas.defect) > maxDefect) {
 		      includeSource = false;
 		  }
 
-		  if (Math.min.apply(this, ateseSources[src].absClosurePhase) > maxClosurePhase) {
+		  if (Math.min.apply(this, meas.absClosurePhase) > maxClosurePhase) {
 		      includeSource = false;
 		  }
 
-		  if (Math.max.apply(this, ateseSources[src].computedFluxDensity) < minFluxDensity) {
+		  var cminFluxDensity = Math.min.apply(this, meas.computedFluxDensity);
+		  var cmaxFluxDensity = Math.max.apply(this, meas.computedFluxDensity);		  
+		  if (cmaxFluxDensity < minFluxDensity) {
 		      includeSource = false;
 		  }
 
-		  var siConstant = ateseSources[src].siClassification.reduce(function(p, c, x, a) {
+		  var siConstant = meas.siClassification.reduce(function(p, c, x, a) {
 		      if (p === c) {
 			  if (x === (a.length - 1)) {
 			      return true;
@@ -509,6 +522,12 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "atnf/skyCoordi
 		  }
 
 		  if (siRequiredVariable && siConstant) {
+		      includeSource = false;
+		  }
+
+		  var deviation = Math.max((Math.abs((cminFluxDensity - meas.avgFluxDensity) / meas.avgFluxDensity)),
+					   (Math.abs((cmaxFluxDensity - meas.avgFluxDensity) / meas.avgFluxDensity)))
+		  if ((deviation * 100) < minDeviation) {
 		      includeSource = false;
 		  }
 		  
