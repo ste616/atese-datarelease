@@ -60,6 +60,17 @@
 	    deviation from avg. f.d. >= <input type="text" id="input-fluxdeviation" value="10" size="4">%
 	  </label>
 	</div>
+	<div>
+	  <input type="checkbox" id="selector-position" value="yes">
+	  <label for="selector-position">
+	    within <input type="text" id="input-position-distance" value="10" size="4"> arcsec of
+	  </label>
+	</div>
+	<div class="move-right">
+	  <input type="text" id="input-position-position" placeholder="RA, Dec">
+	  <img id="input-position-warning" src="warning32.png" class="hidden input-position-icon">
+	  <img id="input-position-correct" src="check32.png" class="hidden input-position-icon">
+	</div>
 	<h2>Show fluxes at</h2>
 	<div class="move-right">
 	  <input type="text" id="input-fd-frequency" value="4500" size="5">

@@ -25,6 +25,9 @@ h3 { font-weight: bold; font-size: 1.1em; margin: 0.2em; }
 #title-area { background-color: #2f4f4f; color: white; padding: 0.3em; }
 #selector-area { padding: 0.3em; }
 
+.hidden { display: none; }
+.input-position-icon { width: 21px; height: 21px; vertical-align: text-bottom; }
+
 input[type=checkbox] {
     position:absolute; z-index:-1000; left:-1000px; overflow: hidden; clip: rect(0 0 0 0); height:1px; width:1px; margin:-1px; padding:0; border:0;
 }
