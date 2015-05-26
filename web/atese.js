@@ -1,5 +1,5 @@
-require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "atnf/skyCoordinate",
-	   "atnf/base", "dojo/number", "dojox/charting/Chart", "dojox/charting/SimpleTheme",
+require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "astrojs/skyCoordinate",
+	   "astrojs/base", "dojo/number", "dojox/charting/Chart", "dojox/charting/SimpleTheme",
 	   "dojox/charting/themes/ThreeD",
 	   "dojo/on", "dojo/dom-geometry", "dojo/window", "dojo/dom-attr", "dojo/dom-class",
 	   "dojo/query", "dojox/timing",
@@ -7,7 +7,7 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "atnf/skyCoordi
 	   "dojox/charting/plot2d/Lines", "dojox/charting/plot2d/Default",
 	   "dojox/charting/axis2d/Default", "dojo/NodeList-dom", "dojox/charting/plot2d/Areas",
 	   "dojo/domReady!" ],
-  function(domConstruct, xhr, dom, skyCoord, atnf, number, Chart, SimpleTheme, theme, on, domGeom,
+  function(domConstruct, xhr, dom, skyCoord, astrojs, number, Chart, SimpleTheme, theme, on, domGeom,
 	   win, domAttr, domClass, query, timing) {
     
     // Take a flux model and return the flux density at the
@@ -82,7 +82,14 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "atnf/skyCoordi
     // The spectral indices considered to be the range of "flat".
     // A spectral index more positive will be considered inverted, and more
     // negative considered steep.
-    var flatRange = [ -0.2, 0.2 ];
+    var flatRange = [];
+    var getFlatRange = function() {
+      // Read the flat range from the input boxes.
+      flatRange[0] = parseFloat(domAttr.get('input-si-flat-low', 'value'));
+      flatRange[1] = parseFloat(domAttr.get('input-si-flat-high', 'value'));
+    };
+    getFlatRange();
+    
     var cellProcess = [
       // MJD
       function(o, i) { return o.mjd[i]; },
@@ -361,107 +368,107 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "atnf/skyCoordi
 
     };
       
-      // Make the page.
-      var populatePage = function() {
-	  var tl = dom.byId('source-area');
-	  domConstruct.empty(tl);
-	  for (var i = 0; i < sourceList.length; i++) {
-	      // Make the source panel and put it on the page.
-	      var sdiv = makeSourcePanel(sourceList[i]);
-	      tl.appendChild(sdiv);
-
-	      populateMeasurements(sourceList[i]);
-	      ateseSources[sourceList[i]].plotMade = false;
-
-	      // Calculate the average flux density for the source.
-	      ateseSources[sourceList[i]].avgFluxDensity =
-		  averageArray.apply(this, ateseSources[sourceList[i]].computedFluxDensity);
-	      
-	  }
-
-	  // Display the number of sources we are showing.
-	  domAttr.set('nsources-selected', 'innerHTML', sourceList.length);
-      };
-	     
-      // Determine if an element is in the viewport.
-      var isInViewport = function(node) {
-          var nodePos = domGeom.position(node);;
-	  var viewport = win.getBox();
-          return ((nodePos.x > 0) && (nodePos.x < viewport.w) && (nodePos.y > (-1 * viewport.h)) && (nodePos.y < (viewport.h * 2)));
-      };
-
-      // We want to make plots only when the user has just finished scrolling,
-      // so the page always appears responsive.
-      var scrollTimer = new timing.Timer(1000); // trigger after 1s.
+    // Make the page.
+    var populatePage = function() {
+      var tl = dom.byId('source-area');
+      domConstruct.empty(tl);
+      for (var i = 0; i < sourceList.length; i++) {
+	// Make the source panel and put it on the page.
+	var sdiv = makeSourcePanel(sourceList[i]);
+	tl.appendChild(sdiv);
+	
+	populateMeasurements(sourceList[i]);
+	ateseSources[sourceList[i]].plotMade = false;
+	
+	// Calculate the average flux density for the source.
+	ateseSources[sourceList[i]].avgFluxDensity =
+	  averageArray.apply(this, ateseSources[sourceList[i]].computedFluxDensity);
+	
+      }
       
-      // This function is used to see if a plot is within the viewport,
-      // and if so we make it, if it hasn't already been made.
-      var plotCheck = function() {
-	  // Stop the scroll timer.
-	  while (scrollTimer.isRunning) {
-	      scrollTimer.stop();
+      // Display the number of sources we are showing.
+      domAttr.set('nsources-selected', 'innerHTML', sourceList.length);
+    };
+    
+    // Determine if an element is in the viewport.
+    var isInViewport = function(node) {
+      var nodePos = domGeom.position(node);;
+      var viewport = win.getBox();
+      return ((nodePos.x > 0) && (nodePos.x < viewport.w) && (nodePos.y > (-1 * viewport.h)) && (nodePos.y < (viewport.h * 2)));
+    };
+    
+    // We want to make plots only when the user has just finished scrolling,
+    // so the page always appears responsive.
+    var scrollTimer = new timing.Timer(400); // trigger after 200ms.
+    
+    // This function is used to see if a plot is within the viewport,
+    // and if so we make it, if it hasn't already been made.
+    var plotCheck = function() {
+      // Stop the scroll timer.
+      while (scrollTimer.isRunning) {
+	scrollTimer.stop();
+      }
+      var found = false;
+      for (var i = 0; i < sourceList.length; i++) {
+	if (ateseSources[sourceList[i]].plotMade === false &&
+	    isInViewport(dom.byId('source-' + sourceList[i]))) {
+	  found = true;
+	  makeSourcePlot(sourceList[i]);
+	  ateseSources[sourceList[i]].plotMade = true;
+	} else if (found) {
+	  // We've gone off the end of the page.
+	  break;
+	}
+      }
+    };
+    
+    scrollTimer.onTick = plotCheck;
+    var scrollCheck = function(evt) {
+      if (scrollTimer.isRunning) {
+	scrollTimer.stop();
+      }
+      scrollTimer.start();
+    };
+    
+    // Get the ATESE catalogue.
+    xhr.get("datarelease/datarelease_catalogue.json", {
+      'handleAs': "json",
+    }).then(function(data) {
+      if (typeof(data) !== 'undefined') {
+	// Compile the sources.
+	ateseSources = data;
+	for (var src in data) {
+	  if (data.hasOwnProperty(src)) {
+	    sourceList.push(src);
+	    var sc = skyCoord.new([
+	      data[src].rightAscension[0],
+	      data[src].declination[0]
+	    ]);
+	    ateseSources[src].coordinate = sc;
+	    // Add some computed arrays.
+	    ateseSources[src].computedFluxDensity = [];
+	    ateseSources[src].computedSpectralIndex = [];
+	    ateseSources[src].siClassification = [];
+	    ateseSources[src].absClosurePhase = ateseSources[src].closurePhase.map(Math.abs);
 	  }
-	  var found = false;
-	  for (var i = 0; i < sourceList.length; i++) {
-	      if (ateseSources[sourceList[i]].plotMade === false &&
-		  isInViewport(dom.byId('source-' + sourceList[i]))) {
-		  found = true;
-		  makeSourcePlot(sourceList[i]);
-		  ateseSources[sourceList[i]].plotMade = true;
-	      } else if (found) {
-		  // We've gone off the end of the page.
-		  break;
-	      }
-	  }
-      };
-
-      scrollTimer.onTick = plotCheck;
-      var scrollCheck = function(evt) {
-	  if (scrollTimer.isRunning) {
-	      scrollTimer.stop();
-	  }
-	  scrollTimer.start();
-      };
-      
-      // Get the ATESE catalogue.
-      xhr.get("datarelease/datarelease_catalogue.json", {
-	  'handleAs': "json",
-      }).then(function(data) {
-	  if (typeof(data) !== 'undefined') {
-	      // Compile the sources.
-	      ateseSources = data;
-	      for (var src in data) {
-		  if (data.hasOwnProperty(src)) {
-		      sourceList.push(src);
-		      var sc = skyCoord.new([
-			  data[src].rightAscension[0],
-			  data[src].declination[0]
-		      ]);
-		      ateseSources[src].coordinate = sc;
-		      // Add some computed arrays.
-		      ateseSources[src].computedFluxDensity = [];
-		      ateseSources[src].computedSpectralIndex = [];
-		      ateseSources[src].siClassification = [];
-		      ateseSources[src].absClosurePhase = ateseSources[src].closurePhase.map(Math.abs);
-		  }
-	      }
-	      sortSources();
-	      populatePage();
-
-	      // Make the node list of all the panels.
-	      panelList = query(".source-div");
-
-	      // Attach the scroll event.
-	      on(window, 'scroll', scrollCheck);
-	      // And run it straight away.
-	      scrollCheck(null);
-	  }
-      });
-
+	}
+	sortSources();
+	populatePage();
+	
+	// Make the node list of all the panels.
+	panelList = query(".source-div");
+	
+	// Attach the scroll event.
+	on(window, 'scroll', scrollCheck);
+	// And run it straight away.
+	scrollCheck(null);
+      }
+    });
+    
     // A routine to check if the position entered in the
     // reference position input box is valid.
-    var positionCheckTimer = new timing.Timer(1000); // trigger after 1s.
-
+    var positionCheckTimer = new timing.Timer(200); // trigger after 200ms.
+    
     var referencePosition = null;
     var positionChecker = function() {
       while (positionCheckTimer.isRunning) {
@@ -523,6 +530,7 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "atnf/skyCoordi
       
     // Make the selection button do things.
     on(dom.byId('button-show-sources'), 'click', function(evt) {
+      getFlatRange();
       sourceList = [];
       var minEpochs = 1;
       if (domAttr.get('selector-nepochs', 'checked')) {
@@ -622,17 +630,17 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "atnf/skyCoordi
       scrollCheck();
     });
 
-      // Ensure that only one of the spectral index checkboxes can
-      // be checked at one time.
-      var checkboxChecker = function(evt) {
-	  if (evt.target.id === 'selector-variable-si') {
-	      domAttr.set('selector-constant-si', 'checked', false);
-	  }
-	  if (evt.target.id === 'selector-constant-si') {
-	      domAttr.set('selector-variable-si', 'checked', false);
-	  }
-      };
-      on(dom.byId('selector-variable-si'), 'change', checkboxChecker);
-      on(dom.byId('selector-constant-si'), 'change', checkboxChecker);
+    // Ensure that only one of the spectral index checkboxes can
+    // be checked at one time.
+    var checkboxChecker = function(evt) {
+      if (evt.target.id === 'selector-variable-si') {
+	domAttr.set('selector-constant-si', 'checked', false);
+      }
+      if (evt.target.id === 'selector-constant-si') {
+	domAttr.set('selector-variable-si', 'checked', false);
+      }
+    };
+    on(dom.byId('selector-variable-si'), 'change', checkboxChecker);
+    on(dom.byId('selector-constant-si'), 'change', checkboxChecker);
       
   });
