@@ -15,8 +15,8 @@ h3 { font-weight: bold; font-size: 1.1em; margin: 0.2em; }
 .source-div-measurements-table > tbody td {
     font-family: 'Cousine', monospace; font-size: 0.8em; border: 1px solid #333;
     padding: 0.3em; text-align: left; }
-.plot-div { width: 300px; height: 100px; border: 1px solid black; margin: 0; }
-.spectraplot-div { width: 300px; height: 300px; border: 1px solid black; margin: 0; }
+.plot-div { width: 400px; height: 100px; border: 0; margin: 0; }
+.spectraplot-div { width: 400px; height: 300px; border: 0; margin: 0; }
 .plot-no-plot { font-size: 2em; font-weight: bold; line-height: 100px; text-align: center;
 		border: 0; }
 .clear-div { clear: both; }
@@ -25,6 +25,8 @@ h3 { font-weight: bold; font-size: 1.1em; margin: 0.2em; }
 #selection-area { background-color: #87cefa; position: fixed; width: 19em; }
 #title-area { background-color: #2f4f4f; color: white; padding: 0.3em; }
 #selector-area { padding: 0.3em; }
+.spectra-link { color: green; font-weight: bold; cursor: pointer; text-decoration: underline;
+		text-align: center; }
 
 .hidden { display: none; }
 .input-position-icon { width: 21px; height: 21px; vertical-align: text-bottom; }
