@@ -483,7 +483,13 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "astrojs/skyCoo
       }
 
     };
-      
+
+    var showNSources = function() {
+      // Display the number of sources we are showing.
+      domAttr.set('nsources-selected', 'innerHTML', sourceList.length);
+
+    };
+    
     // Make the page.
     var populatePage = function() {
       var tl = dom.byId('source-area');
@@ -492,6 +498,7 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "astrojs/skyCoo
 	// Make the source panel and put it on the page.
 	var sdiv = makeSourcePanel(sourceList[i]);
 	tl.appendChild(sdiv);
+	ateseSources[sourceList[i]].domNode = sdiv;
 	
 	populateMeasurements(sourceList[i]);
 	ateseSources[sourceList[i]].plotMade = false;
@@ -501,13 +508,15 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "astrojs/skyCoo
 	  averageArray.apply(this, ateseSources[sourceList[i]].computedFluxDensity);
 	
       }
-      
-      // Display the number of sources we are showing.
-      domAttr.set('nsources-selected', 'innerHTML', sourceList.length);
+      showNSources();
     };
     
     // Determine if an element is in the viewport.
     var isInViewport = function(node) {
+      // Check if we're hidden.
+      if (domClass.contains(node, 'hidden')) {
+	return false;
+      }
       var nodePos = domGeom.position(node);;
       var viewport = win.getBox();
       return ((nodePos.x > 0) && (nodePos.x < viewport.w) && (nodePos.y > (-1 * viewport.h)) && (nodePos.y < (viewport.h * 2)));
@@ -738,12 +747,17 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "astrojs/skyCoo
 	  
 	  if (includeSource) {
 	    sourceList.push(src);
+	    domClass.remove(ateseSources[src].domNode, 'hidden');
+	  } else {
+	    // Hide the DOM node.
+	    domClass.add(ateseSources[src].domNode, 'hidden');
 	  }
 	}
       }
       sortSources();
-      populatePage();
+      // populatePage();
       scrollCheck();
+      showNSources();
     });
 
     // Ensure that only one of the spectral index checkboxes can
