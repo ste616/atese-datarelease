@@ -16,6 +16,7 @@ h3 { font-weight: bold; font-size: 1.1em; margin: 0.2em; }
     font-family: 'Cousine', monospace; font-size: 0.8em; border: 1px solid #333;
     padding: 0.3em; text-align: left; }
 .plot-div { width: 300px; height: 100px; border: 1px solid black; margin: 0; }
+.spectraplot-div { width: 300px; height: 300px; border: 1px solid black; margin: 0; }
 .plot-no-plot { font-size: 2em; font-weight: bold; line-height: 100px; text-align: center;
 		border: 0; }
 .clear-div { clear: both; }

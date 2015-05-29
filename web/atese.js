@@ -1,14 +1,13 @@
 require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "astrojs/skyCoordinate",
 	   "astrojs/base", "dojo/number", "dojox/charting/Chart", "dojox/charting/SimpleTheme",
-	   "dojox/charting/themes/ThreeD",
 	   "dojo/on", "dojo/dom-geometry", "dojo/window", "dojo/dom-attr", "dojo/dom-class",
-	   "dojo/query", "dojox/timing",
+	   "dojo/query", "dojox/timing", "dojox/charting/themes/PrimaryColors",
 	   "dojox/charting/plot2d/Scatter", "dojox/charting/plot2d/Markers",
 	   "dojox/charting/plot2d/Lines", "dojox/charting/plot2d/Default",
 	   "dojox/charting/axis2d/Default", "dojo/NodeList-dom", "dojox/charting/plot2d/Areas",
 	   "dojo/domReady!" ],
-  function(domConstruct, xhr, dom, skyCoord, astrojs, number, Chart, SimpleTheme, theme, on, domGeom,
-	   win, domAttr, domClass, query, timing) {
+  function(domConstruct, xhr, dom, skyCoord, astrojs, number, Chart, SimpleTheme, on, domGeom,
+	   win, domAttr, domClass, query, timing, theme) {
     
     // Take a flux model and return the flux density at the
     // specified frequency.
@@ -205,13 +204,17 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "astrojs/skyCoo
 	'innerHTML': titleText
       }, sdiv);
       
-      // Make the div for the plot.
+      // Make the div for the plots.
       var phdiv = domConstruct.create('div', {
 	'class': "plotholder-div"
       }, sdiv);
       var pdiv = domConstruct.create('div', {
 	'id': 'plot-' + src,
 	'class': "plot-div"
+      }, phdiv);
+      var spdiv = domConstruct.create('div', {
+	'id': 'spectraplot-' + src,
+	'class': "spectraplot-div hidden"
       }, phdiv);
       
       // Make the div for the table.
@@ -245,6 +248,15 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "astrojs/skyCoo
       var cdiv = domConstruct.create('div', {
 	'class': "clear-div"
       }, sdiv);
+
+      // The link to plot the spectra.
+      var speclink = domConstruct.create('span', {
+	'id': 'spectralink-' + src,
+	'class': "spectra-link",
+	'innerHTML': "Plot Spectra"
+      }, cdiv);
+      // Connect it to its handler.
+      on(speclink, 'click', handleSpectraPlot);
       
       return sdiv;
     };
@@ -259,9 +271,78 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "astrojs/skyCoo
       
       return s;
     };
+
+    var handleSpectraPlot = function(e) {
+      // Get the name of the source to plot.
+      var name = e.target.id.replace("spectralink-", "");
+      makeSourceSpectraPlot(name);
+    };
+    
+    
+    var chartFont = 'normal normal bold 8pt Source Sans Pro';
+
+    // This function makes a spectral plot for a source.
+    var makeSourceSpectraPlot = function(src) {
+      // Make the plot.
+      var schart = new Chart('spectraplot-' + src).setTheme(theme);
+      schart.addPlot('default', { 'type': 'Lines' });
+      schart.addAxis('x', {
+	'titleOrientation': 'away',
+	'font': chartFont,
+	'titleFont': chartFont,
+	'minorLabels': false,
+	'natural': false
+      });
+      schart.addAxis('y', {
+	'titleOrientation': 'axis',
+	'natural': false,
+	'fixed': false,
+	'vertical': true,
+	'font': chartFont,
+	'titleFont': chartFont,
+	'min': 0.0
+      });
+      ateseSources[src].spectralPlot = schart;
+
+      // Get each of the epochs for this source.
+      for (var i = 0; i < ateseSources[src].epochs.length; i++) {
+	// Form the file name.
+	var efname = ateseSources[src].epochs[i] + "/" +
+	    src + "_" + ateseSources[src].epochs[i] + ".json";
+	// Grab the file.
+	xhr.get("datarelease/" + efname, {
+	  'handleAs': "json"
+	}).then(plotAddSpectrum);
+      }
+    };
+
+    var plotAddSpectrum = function(data) {
+      if (typeof data === 'undefined') {
+	return;
+      }
+      // Get the plot.
+      var src = data.source;
+      var schart = ateseSources[src].spectralPlot;
+
+      // Format the Stokes I data.
+      var sdata = [];
+      for (var i = 0; i < data.fluxDensityData.length; i++) {
+	if (data.fluxDensityData[i].stokes === "I") {
+	  sdata = data.fluxDensityData[i].data.map(function(a) {
+	    return { 'x': a[0], 'y': a[1] };
+	  });
+	}
+      }
+      if (sdata.length > 0) {
+	schart.addSeries(data.epochName, sdata);
+      }
+      schart.render();
+
+      // Show the plot.
+      domClass.remove('spectraplot-' + src, 'hidden');
+    };
     
     // This function makes the plot for a source.
-    var chartFont = 'normal normal bold 8pt Source Sans Pro';
     var makeSourcePlot = function(src) {
       if (ateseSources[src].epochs.length < 2) {
 	// Just put the text "NO IMAGE" in the box.
@@ -432,7 +513,7 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "astrojs/skyCoo
     
     // Get the ATESE catalogue.
     xhr.get("datarelease/datarelease_catalogue.json", {
-      'handleAs': "json",
+      'handleAs': "json"
     }).then(function(data) {
       if (typeof(data) !== 'undefined') {
 	// Compile the sources.
