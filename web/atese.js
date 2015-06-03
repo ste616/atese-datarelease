@@ -2,13 +2,13 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "astrojs/skyCoo
 	   "astrojs/base", "dojo/number", "dojox/charting/Chart", "dojox/charting/SimpleTheme",
 	   "dojo/on", "dojo/dom-geometry", "dojo/window", "dojo/dom-attr", "dojo/dom-class",
 	   "dojo/query", "dojox/timing", "dojox/charting/themes/PrimaryColors", "dojo/dom-style",
-	   "astrojs/useful",
+	   "astrojs/useful", "dojo/when", "astrojs/time",
 	   "dojox/charting/plot2d/Scatter", "dojox/charting/plot2d/Markers",
 	   "dojox/charting/plot2d/Lines", "dojox/charting/plot2d/Default",
 	   "dojox/charting/axis2d/Default", "dojo/NodeList-dom", "dojox/charting/plot2d/Areas",
 	   "dojo/domReady!" ],
   function(domConstruct, xhr, dom, skyCoord, astrojs, number, Chart, SimpleTheme, on, domGeom,
-	   win, domAttr, domClass, query, timing, theme, domStyle, useful) {
+	   win, domAttr, domClass, query, timing, theme, domStyle, useful, when, astroTime) {
     
     // Take a flux model and return the flux density at the
     // specified frequency.
@@ -219,6 +219,76 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "astrojs/skyCoo
     on(dom.byId('source-selection-select-all'), 'click', bulkSelection);
     on(dom.byId('source-selection-select-none'), 'click', bulkSelection);
     on(dom.byId('source-selection-select-invert'), 'click', bulkSelection);
+
+    var downloadRequired = {};
+    var downloadTotal = 0;
+    var produceDownload = function() {
+      // Get the sources that are selected.
+      var selectedSources = countSelected();
+
+      downloadRequired = {};
+      downloadTotal = 0;
+      for (var i = 0; i < selectedSources.length; i++) {
+	var src = selectedSources[i];
+	downloadRequired[src] = {};
+	for (var j = 0; j < ateseSources[src].epochs.length; j++) {
+	  var epoch = ateseSources[src].epochs[j];
+	  downloadRequired[src][epoch] = true;
+	  downloadTotal++;
+	  when(getASpectrum(src, epoch), checkDownload);
+	}
+      }
+      
+    };
+
+    var checkDownload = function(data) {
+      var done = 0;
+      // Mark the incoming data as done.
+      if (typeof data !== 'undefined') {
+	if (downloadRequired.hasOwnProperty(data.source) &&
+	    downloadRequired[data.source].hasOwnProperty(data.epochName)) {
+	  downloadRequired[data.source][data.epochName] = false;
+	}
+      }
+      for (var src in downloadRequired) {
+	if (downloadRequired.hasOwnProperty(src)) {
+	  for (var epoch in downloadRequired[src]) {
+	    if (downloadRequired[src].hasOwnProperty(epoch)) {
+	      if (!downloadRequired[src][epoch]) {
+		done++;
+	      }
+	    }
+	  }
+	}
+      }
+
+      if (done === downloadTotal) {
+	// Prepare the download package.
+	var pkg = {};
+	for (var src in downloadRequired) {
+	  if (downloadRequired.hasOwnProperty(src)) {
+	    pkg[src] = {
+	      'source': src,
+	      'rightAscension': ateseSources[src].rightAscension[0],
+	      'declination': ateseSources[src].declination[0],
+	      'epochData': []
+	    };
+	    for (var epoch in downloadRequired[src]) {
+	      if (downloadRequired[src].hasOwnProperty(epoch)) {
+		pkg[src].epochData.push(ateseSources[src].spectralData[epoch]);
+	      }
+	    }
+	  }
+	}
+	// Package complete, ask the user to save it.
+	// The name of the file should include the date right now.
+	var ctime = astroTime.new();
+	var fname = "ATESE_data_" + ctime.timeString("%y-%O-%d_%H-%M") + ".json";
+	saveTextAs(JSON.stringify(pkg), fname);
+      }
+    };
+    
+    on(dom.byId('button-source-data-download'), 'click', produceDownload);
     
     // This function makes a panel on the page for a named source.
     var makeSourcePanel = function(src) {
@@ -357,21 +427,39 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "astrojs/skyCoo
       });
       ateseSources[src].spectralPlot = schart;
 
-      ateseSources[src].spectraPlotted = {};
-      
       // Get each of the epochs for this source.
       for (var i = 0; i < ateseSources[src].epochs.length; i++) {
 	ateseSources[src].spectraPlotted[ateseSources[src].epochs[i]] = false;
-	// Form the file name.
-	var efname = ateseSources[src].epochs[i] + "/" +
-	    src + "_" + ateseSources[src].epochs[i] + ".json";
-	// Grab the file.
-	xhr.get("datarelease/" + efname, {
-	  'handleAs': "json"
-	}).then(plotAddSpectrum);
+	when(getASpectrum(src, ateseSources[src].epochs[i]), plotAddSpectrum);
       }
     };
 
+    var getASpectrum = function(src, epoch) {
+      if (!ateseSources.hasOwnProperty(src)) {
+	return null;
+      }
+      if (ateseSources[src].spectralData.hasOwnProperty(epoch)) {
+	// We already have the data.
+	return ateseSources[src].spectralData[epoch];
+      } else {
+	// Form the file name.
+	var efname = epoch + "/" + src + "_" + epoch + ".json";
+	// Grab the file.
+	return xhr.get("datarelease/" + efname, {
+	  'handleAs': "json"
+	}).then(function(data) {
+	  if (typeof data === 'undefined') {
+	    return null;
+	  }
+	  var s = data.source;
+	  var e = data.epochName;
+	  ateseSources[s].spectralData[e] = data;
+	  return data;
+	});
+	
+      }
+    };
+    
     var plotAddSpectrum = function(data) {
       if (typeof data === 'undefined') {
 	return;
@@ -641,6 +729,9 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "astrojs/skyCoo
 	    ateseSources[src].computedSpectralIndex = [];
 	    ateseSources[src].siClassification = [];
 	    ateseSources[src].absClosurePhase = ateseSources[src].closurePhase.map(Math.abs);
+	    // And some stuff for filling out later.
+	    ateseSources[src].spectralData = {};
+	    ateseSources[src].spectraPlotted = {};
 	  }
 	}
 	sortSources();
