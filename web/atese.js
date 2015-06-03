@@ -180,6 +180,45 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "astrojs/skyCoo
     var sortSources = function() {
       sourceList.sort(sortByRA);
     };
+
+    var selectOneSource = function(src, nstate) {
+      if (ateseSources.hasOwnProperty(src)) {
+	if (typeof nstate !== 'undefined' && typeof nstate === 'boolean') {
+	  ateseSources[src].selected = nstate;
+	} else {
+	  ateseSources[src].selected = !ateseSources[src].selected;
+	}
+	if (ateseSources[src].selected) {
+	  domClass.add("source-div-title-" + src, 'source-div-title-selected');
+	} else {
+	  domClass.remove("source-div-title-" + src, 'source-div-title-selected');
+	}
+      }
+      return ateseSources[src].selected;
+    };
+
+    var oneSourceSelected = function(evt) {
+      var src = evt.target.id.replace("source-title-selector-", "");
+      selectOneSource(src);
+      countSelected();
+    };
+
+    var bulkSelection = function(evt) {
+      var v = undefined;
+      if (evt.target.id === 'source-selection-select-all') {
+	v = true;
+      } else if (evt.target.id === 'source-selection-select-none') {
+	v = false;
+      }
+      for (var i = 0; i < sourceList.length; i++) {
+	selectOneSource(sourceList[i], v);
+      }
+      countSelected();
+    };
+
+    on(dom.byId('source-selection-select-all'), 'click', bulkSelection);
+    on(dom.byId('source-selection-select-none'), 'click', bulkSelection);
+    on(dom.byId('source-selection-select-invert'), 'click', bulkSelection);
     
     // This function makes a panel on the page for a named source.
     var makeSourcePanel = function(src) {
@@ -202,8 +241,16 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "astrojs/skyCoo
       // Make the title of the panel.
       var stitle = domConstruct.create('div', {
 	'class': "source-div-title",
+	'id': "source-div-title-" + src,
 	'innerHTML': titleText
       }, sdiv);
+
+      var titleSelector = domConstruct.create('div', {
+	'class': "source-title-selector",
+	'innerHTML': "select",
+	'id': "source-title-selector-" + src
+      }, stitle);
+      on(titleSelector, 'click', oneSourceSelected);
       
       // Make the div for the plots.
       var phdiv = domConstruct.create('div', {
@@ -554,6 +601,24 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "astrojs/skyCoo
       }
       scrollTimer.start();
     };
+
+    var countSelected = function() {
+      var selectedSources = [];
+      for (var src in ateseSources) {
+	if (ateseSources.hasOwnProperty(src) && ateseSources[src].selected &&
+	    !domClass.contains(ateseSources[src].domNode, 'hidden')) {
+	  selectedSources.push(src);
+	}
+      }
+      var selectedCount = selectedSources.length;
+      domAttr.set('sources-selected-number', 'innerHTML', selectedCount);
+      if (selectedCount > 0) {
+	domAttr.set('button-source-data-download', 'disabled', false);
+      } else {
+	domAttr.set('button-source-data-download', 'disabled', true);
+      }
+      return selectedSources;
+    };
     
     // Get the ATESE catalogue.
     xhr.get("datarelease/datarelease_catalogue.json", {
@@ -570,6 +635,7 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "astrojs/skyCoo
 	      data[src].declination[0]
 	    ]);
 	    ateseSources[src].coordinate = sc;
+	    ateseSources[src].selected = false;
 	    // Add some computed arrays.
 	    ateseSources[src].computedFluxDensity = [];
 	    ateseSources[src].computedSpectralIndex = [];
@@ -579,6 +645,7 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "astrojs/skyCoo
 	}
 	sortSources();
 	populatePage();
+	countSelected();
 	
 	// Make the node list of all the panels.
 	panelList = query(".source-div");
@@ -758,6 +825,7 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "astrojs/skyCoo
       // populatePage();
       scrollCheck();
       showNSources();
+      countSelected();
     });
 
     // Ensure that only one of the spectral index checkboxes can

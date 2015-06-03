@@ -86,10 +86,21 @@
 	  <button type="button" id="button-show-sources">Do it!</button>
 	</div>
 	<div class="sources-shown">
-	  <h2>Sources selected: <span id="nsources-selected"></span><h2>
+	  <h2>Sources matching: <span id="nsources-selected"></span><h2>
 	</div>
       </div>
       <div class="clear-div"></div>
+    </div>
+    <div class="source-selection">
+      <div id="source-selection-indicator">
+	Sources selected = <span id="sources-selected-number"></span>
+      </div>
+      <button type="button" id="button-source-data-download" disabled>Download Data</button>
+      <div class="source-selection-selectors">
+	<span id="source-selection-select-all">Select All</span>
+	<span id="source-selection-select-none">Select None</span>
+	<span id="source-selection-select-invert">Invert Selection</span>
+      </div>
     </div>
     <div id="source-area"></div>
   </body>
