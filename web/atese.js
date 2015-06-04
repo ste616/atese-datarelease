@@ -2,13 +2,53 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "astrojs/skyCoo
 	   "astrojs/base", "dojo/number", "dojox/charting/Chart", "dojox/charting/SimpleTheme",
 	   "dojo/on", "dojo/dom-geometry", "dojo/window", "dojo/dom-attr", "dojo/dom-class",
 	   "dojo/query", "dojox/timing", "dojox/charting/themes/PrimaryColors", "dojo/dom-style",
-	   "astrojs/useful", "dojo/when", "astrojs/time",
+	   "astrojs/useful", "dojo/when", "astrojs/time", "dojo/_base/Color",
 	   "dojox/charting/plot2d/Scatter", "dojox/charting/plot2d/Markers",
 	   "dojox/charting/plot2d/Lines", "dojox/charting/plot2d/Default",
 	   "dojox/charting/axis2d/Default", "dojo/NodeList-dom", "dojox/charting/plot2d/Areas",
 	   "dojo/domReady!" ],
   function(domConstruct, xhr, dom, skyCoord, astrojs, number, Chart, SimpleTheme, on, domGeom,
-	   win, domAttr, domClass, query, timing, theme, domStyle, useful, when, astroTime) {
+	   win, domAttr, domClass, query, timing, theme, domStyle, useful, when, astroTime, Colour) {
+
+    // A colour list for our plots.
+    var colourList = [ "#000000", "#FFFF00", "#1CE6FF", "#FF34FF", "#FF4A46", "#008941", "#006FA6", "#A30059",
+		       "#FFDBE5", "#7A4900", "#0000A6", "#63FFAC", "#B79762", "#004D43", "#8FB0FF", "#997D87",
+		       "#5A0007", "#809693", "#FEFFE6", "#1B4400", "#4FC601", "#3B5DFF", "#4A3B53", "#FF2F80",
+		       "#61615A", "#BA0900", "#6B7900", "#00C2A0", "#FFAA92", "#FF90C9", "#B903AA", "#D16100",
+		       "#DDEFFF", "#000035", "#7B4F4B", "#A1C299", "#300018", "#0AA6D8", "#013349", "#00846F",
+		       "#372101", "#FFB500", "#C2FFED", "#A079BF", "#CC0744", "#C0B9B2", "#C2FF99", "#001E09",
+		       "#00489C", "#6F0062", "#0CBD66", "#EEC3FF", "#456D75", "#B77B68", "#7A87A1", "#788D66",
+		       "#885578", "#FAD09F", "#FF8A9A", "#D157A0", "#BEC459", "#456648", "#0086ED", "#886F4C",
+		       
+		       "#34362D", "#B4A8BD", "#00A6AA", "#452C2C", "#636375", "#A3C8C9", "#FF913F", "#938A81",
+		       "#575329", "#00FECF", "#B05B6F", "#8CD0FF", "#3B9700", "#04F757", "#C8A1A1", "#1E6E00",
+		       "#7900D7", "#A77500", "#6367A9", "#A05837", "#6B002C", "#772600", "#D790FF", "#9B9700",
+		       "#549E79", "#FFF69F", "#201625", "#72418F", "#BC23FF", "#99ADC0", "#3A2465", "#922329",
+		       "#5B4534", "#FDE8DC", "#404E55", "#0089A3", "#CB7E98", "#A4E804", "#324E72", "#6A3A4C",
+		       "#83AB58", "#001C1E", "#D1F7CE", "#004B28", "#C8D0F6", "#A3A489", "#806C66", "#222800",
+		       "#BF5650", "#E83000", "#66796D", "#DA007C", "#FF1A59", "#8ADBB4", "#1E0200", "#5B4E51",
+		       "#C895C5", "#320033", "#FF6832", "#66E1D3", "#CFCDAC", "#D0AC94", "#7ED379", "#012C58",
+		       
+		       "#7A7BFF", "#D68E01", "#353339", "#78AFA1", "#FEB2C6", "#75797C", "#837393", "#943A4D",
+		       "#B5F4FF", "#D2DCD5", "#9556BD", "#6A714A", "#001325", "#02525F", "#0AA3F7", "#E98176",
+		       "#DBD5DD", "#5EBCD1", "#3D4F44", "#7E6405", "#02684E", "#962B75", "#8D8546", "#9695C5",
+		       "#E773CE", "#D86A78", "#3E89BE", "#CA834E", "#518A87", "#5B113C", "#55813B", "#E704C4",
+		       "#00005F", "#A97399", "#4B8160", "#59738A", "#FF5DA7", "#F7C9BF", "#643127", "#513A01",
+		       "#6B94AA", "#51A058", "#A45B02", "#1D1702", "#E20027", "#E7AB63", "#4C6001", "#9C6966",
+		       "#64547B", "#97979E", "#006A66", "#391406", "#F4D749", "#0045D2", "#006C31", "#DDB6D0",
+		       "#7C6571", "#9FB2A4", "#00D891", "#15A08A", "#BC65E9", "#FFFFFE", "#C6DC99", "#203B3C",
+		       
+		       "#671190", "#6B3A64", "#F5E1FF", "#FFA0F2", "#CCAA35", "#374527", "#8BB400", "#797868",
+		       "#C6005A", "#3B000A", "#C86240", "#29607C", "#402334", "#7D5A44", "#CCB87C", "#B88183",
+		       "#AA5199", "#B5D6C3", "#A38469", "#9F94F0", "#A74571", "#B894A6", "#71BB8C", "#00B433",
+		       "#789EC9", "#6D80BA", "#953F00", "#5EFF03", "#E4FFFC", "#1BE177", "#BCB1E5", "#76912F",
+		       "#003109", "#0060CD", "#D20096", "#895563", "#29201D", "#5B3213", "#A76F42", "#89412E",
+		       "#1A3A2A", "#494B5A", "#A88C85", "#F4ABAA", "#A3F3AB", "#00C6C8", "#EA8B66", "#958A9F",
+		       "#BDC9D2", "#9FA064", "#BE4700", "#658188", "#83A485", "#453C23", "#47675D", "#3A3F00",
+		       "#061203", "#DFFB71", "#868E7E", "#98D058", "#6C8F7D", "#D7BFC2", "#3C3E6E", "#D83D66",
+		       
+		       "#2F5D9B", "#6C5E46", "#D25B88", "#5B656C", "#00B57F", "#545C46", "#866097", "#365D25",
+		       "#252F99", "#00CCFF", "#674E60", "#FC009C", "#92896B" ];
     
     // Take a flux model and return the flux density at the
     // specified frequency.
@@ -240,7 +280,7 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "astrojs/skyCoo
 	  var epoch = ateseSources[src].epochs[j];
 	  downloadRequired[src][epoch] = true;
 	  downloadTotal++;
-	  when(getASpectrum(src, epoch), checkDownload);
+	  when(getASpectrum(src, epoch, colourList[j]), checkDownload);
 	}
       }
 
@@ -450,14 +490,16 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "astrojs/skyCoo
       // Get each of the epochs for this source.
       for (var i = 0; i < ateseSources[src].epochs.length; i++) {
 	ateseSources[src].spectraPlotted[ateseSources[src].epochs[i]] = false;
-	when(getASpectrum(src, ateseSources[src].epochs[i]), plotAddSpectrum);
+	when(getASpectrum(src, ateseSources[src].epochs[i], colourList[i]), plotAddSpectrum);
       }
     };
 
-    var getASpectrum = function(src, epoch) {
+    var getASpectrum = function(src, epoch, specColour) {
       if (!ateseSources.hasOwnProperty(src)) {
 	return null;
       }
+      ateseSources[src].specColour[epoch] = Colour.fromHex(specColour);
+
       if (ateseSources[src].spectralData.hasOwnProperty(epoch)) {
 	// We already have the data.
 	return ateseSources[src].spectralData[epoch];
@@ -479,6 +521,13 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "astrojs/skyCoo
 	
       }
     };
+
+    var freqSpace = function(v, i, a) {
+      if (i == (a.length - 1)) {
+	return 0;
+      }
+      return (a[i + 1][0] - v[0]);
+    };
     
     var plotAddSpectrum = function(data) {
       if (typeof data === 'undefined') {
@@ -486,20 +535,44 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "astrojs/skyCoo
       }
       // Get the plot.
       var src = data.source;
+      var epoch = data.epochName;
       var schart = ateseSources[src].spectralPlot;
+      var chCol = ateseSources[src].specColour[epoch];
 
       // Format the Stokes I data.
       var sdata = [];
+      var fspacing = [];
       for (var i = 0; i < data.fluxDensityData.length; i++) {
 	if (data.fluxDensityData[i].stokes === "I") {
 	  sdata = data.fluxDensityData[i].data.map(function(a) {
 	    return { 'x': a[0], 'y': a[1] };
 	  });
+	  fspacing = data.fluxDensityData[i].data.map(freqSpace);
 	}
       }
-      if (sdata.length > 0) {
-	schart.addSeries(data.epochName, sdata);
-	schart.render();
+
+      var startIndex = [ 0 ];
+      var endIndex = [];
+      for (var i = 1; i < fspacing.length; i++) {
+	if (fspacing[i] > 0.01) {
+	  endIndex.push(i);
+	  startIndex.push(i + 1);
+	}
+      }
+      endIndex.push(fspacing.length);
+      for (var i = 0; i < startIndex.length; i++) {
+	var spdata = sdata.slice(startIndex[i], endIndex[i]);
+	if (spdata.length > 0) {
+	  if (i == 0) {
+	    schart.addSeries(data.epochName, spdata,
+			     { 'stroke': { 'color': chCol } });
+	    schart.render();
+	  } else {
+	    schart.addSeries(data.epochName + '_' + i, spdata,
+			     { 'stroke': { 'color': chCol } });
+	    schart.render();
+	  }
+	}
       }
       ateseSources[src].spectraPlotted[data.epochName] = true;
       
@@ -517,11 +590,11 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "astrojs/skyCoo
       if (allPlotted) {
 	for (var e in ateseSources[src].spectraPlotted) {
 	  if (ateseSources[src].spectraPlotted.hasOwnProperty(e)) {
-	    var t = schart.getSeries(e);
+	    // var t = schart.getSeries(e);
 	    var n = 'measrow-' + src + '-' + e;
-	    var fgc = useful.foregroundColour(t.dyn.stroke.color);
+	    var fgc = useful.foregroundColour(ateseSources[src].specColour[e]);
 	    domStyle.set(n, {
-	      'backgroundColor': t.dyn.stroke.color,
+	      'backgroundColor': ateseSources[src].specColour[e],
 	      'color': fgc
 	    });
 	  }
@@ -751,6 +824,7 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "astrojs/skyCoo
 	    ateseSources[src].absClosurePhase = ateseSources[src].closurePhase.map(Math.abs);
 	    // And some stuff for filling out later.
 	    ateseSources[src].spectralData = {};
+	    ateseSources[src].specColour = {};
 	    ateseSources[src].spectraPlotted = {};
 	  }
 	}
