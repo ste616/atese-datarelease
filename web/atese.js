@@ -226,6 +226,10 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "astrojs/skyCoo
       // Get the sources that are selected.
       var selectedSources = countSelected();
 
+      // Hide the download button and show the progress.
+      domClass.add('source-selection-indicator', 'hidden');
+      domClass.remove('source-download-indicator', 'hidden');
+      
       downloadRequired = {};
       downloadTotal = 0;
       for (var i = 0; i < selectedSources.length; i++) {
@@ -262,6 +266,11 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "astrojs/skyCoo
 	}
       }
 
+      // Update the progress indicator.
+      domAttr.set('source-download-indicator', 'innerHTML',
+		  "Collating epochs: " + done + " of " + downloadTotal);
+      // console.log("done " + done + " of " + downloadTotal);
+      
       if (done === downloadTotal) {
 	// Prepare the download package.
 	var pkg = {};
@@ -285,6 +294,11 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "astrojs/skyCoo
 	var ctime = astroTime.new();
 	var fname = "ATESE_data_" + ctime.timeString("%y-%O-%d_%H-%M") + ".json";
 	saveTextAs(JSON.stringify(pkg), fname);
+
+	// Show the download button and hide the progress.
+	domClass.remove('source-selection-indicator', 'hidden');
+	domClass.add('source-download-indicator', 'hidden');
+
       }
     };
     
@@ -659,7 +673,7 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "astrojs/skyCoo
     
     // We want to make plots only when the user has just finished scrolling,
     // so the page always appears responsive.
-    var scrollTimer = new timing.Timer(400); // trigger after 200ms.
+    var scrollTimer = new timing.Timer(400); // trigger after 400ms.
     
     // This function is used to see if a plot is within the viewport,
     // and if so we make it, if it hasn't already been made.
@@ -913,7 +927,6 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "astrojs/skyCoo
 	}
       }
       sortSources();
-      // populatePage();
       scrollCheck();
       showNSources();
       countSelected();
