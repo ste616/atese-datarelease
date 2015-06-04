@@ -228,6 +228,7 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "astrojs/skyCoo
 
       // Hide the download button and show the progress.
       domClass.add('source-selection-indicator', 'hidden');
+      domClass.add('button-source-data-download', 'hidden');
       domClass.remove('source-download-indicator', 'hidden');
       
       downloadRequired = {};
@@ -242,7 +243,11 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "astrojs/skyCoo
 	  when(getASpectrum(src, epoch), checkDownload);
 	}
       }
-      
+
+      // Update the progress indicator.
+      domAttr.set('source-download-indicator', 'innerHTML',
+		  "Collating epochs: 0 of " + downloadTotal);
+
     };
 
     var checkDownload = function(data) {
@@ -297,6 +302,7 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "astrojs/skyCoo
 
 	// Show the download button and hide the progress.
 	domClass.remove('source-selection-indicator', 'hidden');
+	domClass.remove('button-source-data-download', 'hidden');
 	domClass.add('source-download-indicator', 'hidden');
 
       }
