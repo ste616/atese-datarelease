@@ -806,6 +806,19 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "astrojs/skyCoo
 	// And run it straight away.
 	scrollCheck(null);
       }
+    }, function(err) {
+      // Not handling errors.
+
+    }, function(evt) {
+      var loadPct = evt.loaded / evt.total * 100;
+      var loadKb = evt.loaded / 1024;
+      var totalKb = evt.total / 1024;
+      domAttr.set('catalogue-loaded-progress', 'innerHTML',
+		  number.round(loadKb, 0));
+      domAttr.set('catalogue-size-total', 'innerHTML',
+		  number.round(totalKb, 0));
+      domAttr.set('catalogue-loaded-percent', 'innerHTML',
+		  number.round(loadPct, 1));
     });
     
     // A routine to check if the position entered in the

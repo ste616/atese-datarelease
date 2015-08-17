@@ -16,6 +16,12 @@ h3 { font-weight: bold; font-size: 1.1em; margin: 0.2em; }
 .source-div-measurements-table > tbody td {
     font-family: 'Cousine', monospace; font-size: 0.8em; border: 1px solid #333;
     padding: 0.3em; text-align: left; }
+
+#catalogue-loading {
+    position: fixed; z-index: 1000; height: 3em; background-color: yellow; left: 20em; right: 1em;
+    line-height: 3em; padding: 0 0.6em; top: 4em; text-align: center; font-weight: bold;
+}
+
 .plot-div { width: 400px; height: 100px; border: 0; margin: 0; }
 .spectraplot-div { width: 400px; height: 300px; border: 0; margin: 0; }
 .plot-no-plot { font-size: 2em; font-weight: bold; line-height: 100px; text-align: center;
