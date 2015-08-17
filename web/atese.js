@@ -121,7 +121,11 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "astrojs/skyCoo
 	return si;
       },
       // Closure Phase
-      function(o, i) { return o.closurePhase[i]; },
+      function(o, i) {
+	if (o.closurePhase[i] === -999) {
+	  return "N/A";
+	}
+	return o.closurePhase[i]; },
       // Defect
       function(o, i) { return o.defect[i]; }
     ];
@@ -516,7 +520,7 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "astrojs/skyCoo
       var startIndex = [ 0 ];
       var endIndex = [];
       for (var i = 1; i < fspacing.length; i++) {
-	if (fspacing[i] > 0.01) {
+	if (fspacing[i] > 0.14) {
 	  endIndex.push(i);
 	  startIndex.push(i + 1);
 	}
