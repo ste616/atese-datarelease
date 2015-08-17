@@ -766,60 +766,62 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "astrojs/skyCoo
       }
       return selectedSources;
     };
-    
-    // Get the ATESE catalogue.
-    xhr.get("datarelease/datarelease_catalogue.json", {
-      'handleAs': "json"
-    }).then(function(data) {
-      if (typeof(data) !== 'undefined') {
-	// Compile the sources.
-	ateseSources = data;
-	for (var src in data) {
-	  if (data.hasOwnProperty(src)) {
-	    sourceList.push(src);
-	    var sc = skyCoord.new([
-	      data[src].rightAscension[0],
-	      data[src].declination[0]
-	    ]);
-	    ateseSources[src].coordinate = sc;
-	    ateseSources[src].selected = false;
-	    // Add some computed arrays.
-	    ateseSources[src].computedFluxDensity = [];
-	    ateseSources[src].computedSpectralIndex = [];
-	    ateseSources[src].siClassification = [];
-	    ateseSources[src].absClosurePhase = ateseSources[src].closurePhase.map(Math.abs);
-	    // And some stuff for filling out later.
-	    ateseSources[src].spectralData = {};
-	    ateseSources[src].specColour = {};
-	    ateseSources[src].spectraPlotted = {};
-	  }
-	}
-	sortSources();
-	populatePage();
-	countSelected();
-	
-	// Make the node list of all the panels.
-	panelList = query(".source-div");
-	
-	// Attach the scroll event.
-	on(window, 'scroll', scrollCheck);
-	// And run it straight away.
-	scrollCheck(null);
-      }
-    }, function(err) {
-      // Not handling errors.
 
-    }, function(evt) {
-      var loadPct = evt.loaded / evt.total * 100;
-      var loadKb = evt.loaded / 1024;
-      var totalKb = evt.total / 1024;
-      domAttr.set('catalogue-loaded-progress', 'innerHTML',
-		  number.round(loadKb, 0));
-      domAttr.set('catalogue-size-total', 'innerHTML',
-		  number.round(totalKb, 0));
-      domAttr.set('catalogue-loaded-percent', 'innerHTML',
-		  number.round(loadPct, 1));
-    });
+    var getCatalogue = function() {
+      // Get the ATESE catalogue.
+      xhr.get("datarelease/datarelease_catalogue.json", {
+	'handleAs': "json"
+      }).then(function(data) {
+	if (typeof(data) !== 'undefined') {
+	  // Compile the sources.
+	  ateseSources = data;
+	  for (var src in data) {
+	    if (data.hasOwnProperty(src)) {
+	      sourceList.push(src);
+	      var sc = skyCoord.new([
+		data[src].rightAscension[0],
+		data[src].declination[0]
+	      ]);
+	      ateseSources[src].coordinate = sc;
+	      ateseSources[src].selected = false;
+	      // Add some computed arrays.
+	      ateseSources[src].computedFluxDensity = [];
+	      ateseSources[src].computedSpectralIndex = [];
+	      ateseSources[src].siClassification = [];
+	      ateseSources[src].absClosurePhase = ateseSources[src].closurePhase.map(Math.abs);
+	      // And some stuff for filling out later.
+	      ateseSources[src].spectralData = {};
+	      ateseSources[src].specColour = {};
+	      ateseSources[src].spectraPlotted = {};
+	    }
+	  }
+	  sortSources();
+	  populatePage();
+	  countSelected();
+	  
+	  // Make the node list of all the panels.
+	  panelList = query(".source-div");
+	  
+	  // Attach the scroll event.
+	  on(window, 'scroll', scrollCheck);
+	  // And run it straight away.
+	  scrollCheck(null);
+	}
+      }, function(err) {
+	// Not handling errors.
+	
+      }, function(evt) {
+	var loadPct = evt.loaded / evt.total * 100;
+	var loadKb = evt.loaded / 1024;
+	var totalKb = evt.total / 1024;
+	domAttr.set('catalogue-loaded-progress', 'innerHTML',
+		    number.round(loadKb, 0));
+	domAttr.set('catalogue-size-total', 'innerHTML',
+		    number.round(totalKb, 0));
+	domAttr.set('catalogue-loaded-percent', 'innerHTML',
+		    number.round(loadPct, 1));
+      });
+    };
     
     // A routine to check if the position entered in the
     // reference position input box is valid.
@@ -1003,5 +1005,8 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "astrojs/skyCoo
     };
     on(dom.byId('selector-variable-si'), 'change', checkboxChecker);
     on(dom.byId('selector-constant-si'), 'change', checkboxChecker);
-      
+
+    // Now get the catalogue.
+    getCatalogue();
+    
   });
