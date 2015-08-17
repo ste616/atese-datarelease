@@ -2,13 +2,13 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "astrojs/skyCoo
 	   "astrojs/base", "dojo/number", "dojox/charting/Chart", "dojox/charting/SimpleTheme",
 	   "dojo/on", "dojo/dom-geometry", "dojo/window", "dojo/dom-attr", "dojo/dom-class",
 	   "dojo/query", "dojox/timing", "dojox/charting/themes/PrimaryColors", "dojo/dom-style",
-	   "astrojs/useful", "dojo/when", "astrojs/time", "dojo/_base/Color",
+	   "astrojs/useful", "dojo/when", "astrojs/time", "dojo/_base/Color", "dojo/_base/fx",
 	   "dojox/charting/plot2d/Scatter", "dojox/charting/plot2d/Markers",
 	   "dojox/charting/plot2d/Lines", "dojox/charting/plot2d/Default",
 	   "dojox/charting/axis2d/Default", "dojo/NodeList-dom", "dojox/charting/plot2d/Areas",
 	   "dojo/domReady!" ],
   function(domConstruct, xhr, dom, skyCoord, astrojs, number, Chart, SimpleTheme, on, domGeom,
-	   win, domAttr, domClass, query, timing, theme, domStyle, useful, when, astroTime, Colour) {
+	   win, domAttr, domClass, query, timing, theme, domStyle, useful, when, astroTime, Colour, fx) {
 
     // Take a flux model and return the flux density at the
     // specified frequency.
@@ -773,6 +773,10 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "astrojs/skyCoo
 	'handleAs': "json"
       }).then(function(data) {
 	if (typeof(data) !== 'undefined') {
+	  // Show the formatting message.
+	  domClass.remove('page-formatting-message', 'hidden');
+	  domClass.add('catalogue-loading-message', 'hidden');
+
 	  // Compile the sources.
 	  ateseSources = data;
 	  for (var src in data) {
@@ -801,12 +805,16 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "astrojs/skyCoo
 	  
 	  // Make the node list of all the panels.
 	  panelList = query(".source-div");
+
+	  // Hide the loading message.
+	  fx.fadeOut({ 'node': 'catalogue-loading', 'duration': 1000 }).play();
 	  
 	  // Attach the scroll event.
 	  on(window, 'scroll', scrollCheck);
 	  // And run it straight away.
 	  scrollCheck(null);
 	}
+	  
       }, function(err) {
 	// Not handling errors.
 	
