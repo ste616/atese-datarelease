@@ -22,13 +22,18 @@ h3 { font-weight: bold; font-size: 1.1em; margin: 0.2em; }
     line-height: 3em; padding: 0 0.6em; top: 4em; text-align: center; font-weight: bold;
 }
 
-.plot-div { width: 400px; height: 100px; border: 0; margin: 0; }
+.plot-div { width: 400px; height: 140px; border: 0; margin: 0; float: left; }
 .spectraplot-div { width: 400px; height: 300px; border: 0; margin: 0; }
+.plot-legend-div { float: left; }
 .plot-no-plot { font-size: 2em; font-weight: bold; line-height: 100px; text-align: center;
 		border: 0; }
 .clear-div { clear: both; }
 .plotholder-div { margin: 0.6em; float: left; }
-.table-div { margin: 0.6em; }
+.plot-navigation-div { clear: both; width: 100%; cursor: pointer; }
+.navigation-previous { float: left; cursor: pointer; }
+.navigation-next { float: right; text-align: right; }
+.table-div { margin: 0.6em; clear: both; }
+.table-div > table { width: 100%; }
 #selection-area { background-color: #87cefa; position: fixed; width: 19em; }
 #title-area { background-color: #2f4f4f; color: white; padding: 0.3em; }
 #selector-area { padding: 0.3em; }

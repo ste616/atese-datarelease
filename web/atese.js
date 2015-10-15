@@ -10,68 +10,7 @@ require( [ "dojo/dom-construct", "dojo/request/xhr", "dojo/dom", "astrojs/skyCoo
   function(domConstruct, xhr, dom, skyCoord, astrojs, number, Chart, SimpleTheme, on, domGeom,
 	   win, domAttr, domClass, query, timing, theme, domStyle, useful, when, astroTime, Colour, fx) {
 
-    // Take a flux model and return the flux density at the
-    // specified frequency.
-    var fluxModel2Density = function(model, frequency) {
-      // The frequency should be in MHz, but the model will require
-      // it in GHz.
-      var f = frequency / 1000;
-      var isLog = (model[model.length - 1] === 'log');
-      if (isLog) {
-	f = Math.log(f) / Math.log(10);
-      }
-      var s = parseFloat(model[0]);
-      for (var i = 1; i < model.length; i++) {
-	if (i === model.length - 1) {
-	  break;
-	}
-	s += parseFloat(model[i]) * Math.pow(f, i);
-      }
-      if (isLog) {
-	s = Math.pow(10, s);
-      }
-      return s;
-    };
       
-    // Take a flux model and return the log S - log v slope
-    // (the spectral index) at a specified frequency, by
-    // taking the derivative and evaluating.
-    var fluxModel2Slope = function(model, frequency) {
-      // The frequency should be in MHz, but the model will require
-      // it in GHz.
-      var isLog = (model[model.length - 1] === 'log');
-      var f = Math.log(frequency / 1000) / Math.log(10);
-      // This only works if we have a log/log model.
-      if (!isLog) {
-	// We get the derivative of the general function
-	// S = a + bv + cv^2
-	// after being transformed to log S
-	// log S = log(a + bv + cv^2)
-	// by substituting x = log v, thus v = 10^x
-	// Then dlog S/dx is solved by Wolfram Alpha to be
-	// 10^x (b + 2^(x+1) * 5^x * c) / (a + 10^x * (b + c * 10^x))
-	
-	// Check that we only have order 2 or below.
-	if ((model.length - 1) > 3) {
-	  return null;
-	}
-	var a = (model.length >= 2) ? parseFloat(model[0]) : 0;
-	var b = (model.length >= 3) ? parseFloat(model[1]) : 0;
-	var c = (model.length == 4) ? parseFloat(model[2]) : 0;
-	var s = Math.pow(10, f) * (b + Math.pow(2, (f + 1)) *
-				   Math.pow(5, f) * c) /
-	    (a + Math.pow(10, f) * (b + c * Math.pow(10, f)));
-	return s;
-      }
-      var s = 0;
-      for (var i = 1; i < model.length; i++) {
-	if (i === model.length - 1) {
-	  break;
-	}
-	s += parseFloat(model[i]) * i * Math.pow(f, (i - 1));
-      }
-      return s;
-    };
     
 
     // The arrays controlling the layout of the measurement tables.

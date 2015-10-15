@@ -5,10 +5,42 @@ var misc = require('./misc');
 // Load the data release catalogue.
 var dataRelease = require("./datarelease_catalogue.json");
 
+// Sort an array in ascending order and return a list of the sorted
+// indices.
+var sortWithIndices = function(sarr) {
+  var srta = []
+  // Add the index to each element.
+  for (var i = 0; i < sarr.length; i++) {
+    srta.push([ sarr[i], i ]);
+  }
+  srta.sort(function(a, b) {
+    return a[0] < b[0] ? -1 : 1;
+  });
+  for (var j = 0; j < srta.length; j++) {
+    srta[j] = srta[j][1];
+  }
+  
+  return srta;
+};
+
 // Make a list of all the sources in the catalogue.
 var allSources = [];
 for (var k in dataRelease) {
   if (dataRelease.hasOwnProperty(k)) {
+    // At the same time, we sort the arrays into time order.
+    var sortOrder = sortWithIndices(dataRelease[k].mjd);
+    for (var a in dataRelease[k]) {
+      if (dataRelease[k].hasOwnProperty(a) &&
+	  dataRelease[k][a] instanceof Array &&
+	  dataRelease[k][a].length == sortOrder.length) {
+	t = dataRelease[k][a];
+	dataRelease[k][a] = [];
+	for (var i = 0; i < sortOrder.length; i++) {
+	  dataRelease[k][a].push(t[sortOrder[i]]);
+	}
+      }
+    }
+    
     allSources.push(k);
   }
 }
@@ -41,14 +73,13 @@ module.exports = function(query) {
     var a = sortedLists[sortFunction].indexOf(query.source);
     if (a > -1) {
       sourcesToReturn = [ a ];
+      // By default we return this index.
+      if (query.next) {
+	// If we receive the "next" keyword, it means select first the source
+	// after the one we were told to select first.
+	sourcesToReturn[0] += 1;
+      }
     }
-  }
-
-  // By default we return this index.
-  if (query.next) {
-    // If we receive the "next" keyword, it means select first the source
-    // after the one we were told to select first.
-    sourcesToReturn[0] += 1;
   }
 
   // By default we return only the single source.
