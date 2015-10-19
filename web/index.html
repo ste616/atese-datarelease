@@ -5,82 +5,89 @@
     <link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro|Cousine" rel="stylesheet" type="text/css">
     <link href="atese.css" rel="stylesheet" type="text/css">
     <title>ATESE Data Page</title>
-    <script src="/jslib/filesaver/FileSaver.js"></script>
-    <script src="/jslib/dojo/configure.js"></script>
-    <script src="/jslib/dojo/1.10.4/dojo/dojo.js"></script>
   </head>
   <body>
     <div id="selection-area">
       <div id="title-area">
 	<h1>ATESE Data</h1>
-	<h3>Beta_2015-June-03</h3>
+	<h3>Beta_2015-October-19</h3>
       </div>
       <div id="selector-area">
 	<h2>Show sources with</h2>
-	<div>
-	  <input type="checkbox" id="selector-nepochs" value="yes">
-	  <label for="selector-nepochs">
-	    <input type="text" id="input-nepochs" value="2" size="3"> or more epochs
-	  </label>
-	</div>
-	<div>
-	  <input type="checkbox" id="selector-defect" value="yes">
-	  <label for="selector-defect">
-	    defect <= <input type="text" id="input-defect" value="2" size="3">%
-	  </label>
-	</div>
-	<div>
-	  <input type="checkbox" id="selector-closurephase" value="yes">
-	  <label for="selector-closurephase">
-	    abs(closure) <= <input type="text" id="input-closurephase" value="2" size="3"> deg
-	  </label>
-	</div>
-	<div>
-	  <input type="checkbox" id="selector-fluxdensity" value="yes">
-	  <label for="selector-fluxdensity">
-	    flux dens. >= <input type="text" id="input-fluxdensity" value="0.1" size="3"> Jy/beam
-	  </label>
-	</div>
-	<div>
-	  <input type="checkbox" id="selector-variable-si" value="yes">
-	  <label for="selector-variable-si">
-	    variable SI classification
-	  </label>
-	</div>
-	<div>
-	  <input type="checkbox" id="selector-constant-si" value="yes">
-	  <label for="selector-constant-si">
-	    constant SI classification
-	  </label>
-	</div>
-	<div>
-	  <input type="checkbox" id="selector-fluxdeviation" value="yes">
-	  <label for="selector-fluxdeviation">
-	    deviation from avg. f.d. >= <input type="text" id="input-fluxdeviation" value="10" size="4">%
-	  </label>
-	</div>
-	<div>
-	  <input type="checkbox" id="selector-position" value="yes">
-	  <label for="selector-position">
-	    within <input type="text" id="input-position-distance" value="10" size="4"> arcsec of
-	  </label>
-	</div>
-	<div class="move-right">
-	  <input type="text" id="input-position-position" placeholder="RA, Dec">
-	  <img id="input-position-warning" src="warning32.png" class="hidden input-position-icon">
-	  <img id="input-position-correct" src="check32.png" class="hidden input-position-icon">
-	</div>
-	<h2>Show fluxes at</h2>
-	<div class="move-right">
-	  <input type="text" id="input-fd-frequency" value="4500" size="5">
-	  <label for="input-fd-frequency">MHz</label>
-	</div>
-	<h2>Flat spectral index has</h2>
-	<div class="move-right">
-	  <input type="text" id="input-si-flat-low" value="-0.2" size="5">
-	  <label for="input-si-flat-low"> &lt;= &alpha; &lt;= </label>
-	  <input type="text" id="input-si-flat-high" value="0.2" size="5">
-	</div>
+	<form id="showForm">
+	  <div>
+	    <input type="checkbox" id="selector-nepochs" value="yes" name="use-show-nepochs">
+	      <label for="selector-nepochs">
+		<input type="text" id="input-nepochs" value="2" size="3" name="show-nepochs"> or more epochs
+	      </label>
+	  </div>
+	  <div>
+	    <input type="checkbox" id="selector-defect" value="yes" name="use-show-defect">
+	      <label for="selector-defect">
+		defect <= <input type="text" id="input-defect" value="2" size="3" name="show-defect">%
+	      </label>
+	  </div>
+	  <div>
+	    <input type="checkbox" id="selector-closurephase" value="yes" name="use-show-closure">
+	      <label for="selector-closurephase">
+		abs(closure) <= <input type="text" id="input-closurephase" value="2" size="3" name="show-closure"> deg
+	      </label>
+	  </div>
+	  <div>
+	    <input type="checkbox" id="selector-fluxdensity" value="yes" name="use-show-fluxDensity">
+	      <label for="selector-fluxdensity">
+		flux dens. >= <input type="text" id="input-fluxdensity" value="0.1" size="3" name="show-fluxDensity"> Jy/beam
+	      </label>
+	  </div>
+	  <div>
+	    <input type="checkbox" id="selector-variable-si" value="yes" name="show-variable-spectralIndex">
+	      <label for="selector-variable-si">
+		variable SI classification
+	      </label>
+	  </div>
+	  <div>
+	    <input type="checkbox" id="selector-constant-si" value="yes" name="show-constant-spectralIndex">
+	      <label for="selector-constant-si">
+		constant SI classification
+	      </label>
+	  </div>
+	  <div>
+	    <input type="checkbox" id="selector-fluxdeviation" value="yes" name="use-fluxDensity-deviation">
+	      <label for="selector-fluxdeviation">
+		deviation from avg. f.d. >= <input type="text" id="input-fluxdeviation"
+		  value="10" size="4" name="fluxDensity-deviation">%
+	      </label>
+	  </div>
+	  <div>
+	    <input type="checkbox" id="selector-position" value="yes" name="use-show-position">
+	      <label for="selector-position">
+		within <input type="text" id="input-position-distance" value="10" size="4"
+		  name="show-position-distance"> arcsec of
+	      </label>
+	  </div>
+	  <div class="move-right">
+	    <input type="text" id="input-position-position" placeholder="RA, Dec" name="show-position">
+	      <img id="input-position-warning" src="warning32.png" class="hidden input-position-icon">
+		<img id="input-position-correct" src="check32.png" class="hidden input-position-icon">
+	  </div>
+	  <h2>Show fluxes at</h2>
+	  <div class="move-right">
+	    <input type="text" id="input-fd-frequency" value="4500" size="5" name="fluxDensity-frequency">
+	      <label for="input-fd-frequency">MHz</label>
+	  </div>
+	  <h2>Flat spectral index has</h2>
+	  <div class="move-right">
+	    <input type="text" id="input-si-flat-low" value="-0.2" size="5" name="spectralIndex-flat-low">
+	      <label for="input-si-flat-low"> &lt;= &alpha; &lt;= </label>
+	      <input type="text" id="input-si-flat-high" value="0.2" size="5" name="spectralIndex-flat-high">
+	  </div>
+	  <!-- Hidden form elements -->
+	  <input type="hidden" name="fluxPlot" value="true">
+	  <input type="hidden" name="fluxTable" value="true">
+	  <input type="hidden" name="spectraPlot" value="true">
+	  <input type="hidden" name="nSpectraPlotted" value="5">
+	  <input type="hidden" name="sorting" value="ra">
+	</form>
 	<div>
 	  <button type="button" id="button-show-sources">Do it!</button>
 	</div>
@@ -106,6 +113,9 @@
       <div id="first-source"></div>
     </div>
 
+    <script src="/jslib/filesaver/FileSaver.js"></script>
+    <script src="/jslib/dojo/configure.js"></script>
+    <script src="/jslib/dojo/1.10.4/dojo/dojo.js"></script>
     <script src="atese-main.js"></script>
   </body>
 </html>

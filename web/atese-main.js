@@ -1,15 +1,13 @@
 require( [ "dojo/dom-construct", "dojo/dom", "astrojs/base", "dojo/number", "./atese-common.js",
 	   "dojo/on", "dojo/dom-geometry", "dojo/window", "dojo/dom-attr", "dojo/dom-class",
 	   "dojo/query", "dojox/timing", "dojo/dom-style", "./atese-plotting.js",
-	   "astrojs/useful", "dojo/when", "astrojs/time", "dojo/_base/fx",
+	   "astrojs/useful", "dojo/when", "astrojs/time", "dojo/_base/fx", "dojo/io-query",
+	   "dojo/dom-form", "dojo/hash", "dojo/topic", "dojo/_base/lang",
 	   "dojo/NodeList-dom",
 	   "dojo/domReady!" ],
 	 function(domConstruct, dom, astrojs, number, atese, on, domGeom,
 		  win, domAttr, domClass, query, timing, domStyle, atesePlot,
-		  useful, when, astroTime, fx) {
-
-	   // Begin by getting the first list of sources so we can start making the page.
-	   atese.setSorting("ra");
+		  useful, when, astroTime, fx, ioQuery, domForm, hash, topic, lang) {
 
 	   // This object contains methods to generate IDs based on the source name.
 	   var idMethods = {
@@ -43,16 +41,22 @@ require( [ "dojo/dom-construct", "dojo/dom", "astrojs/base", "dojo/number", "./a
 	   };
 	   // And set our plotter to use these.
 	   atesePlot.setIdGenerator(idMethods);
+
+	   // Get the options set by our form on the page.
+	   var pageOptions = domForm.toObject("showForm");
+	   // Make a copy for the default.
+	   var defaultPageOptions = lang.clone(pageOptions);
 	   
-	   var pageOptions = {
-	     'fluxPlot': true,
-	     'fluxTable': true,
-	     'spectraPlot': true,
-	     'fluxDensityFrequency': 4500,
-	     'siFlatLowValue': -0.2,
-	     'siFlatHighValue': 0.2,
-	     'nSpectraPlotted': 5
-	   };
+	   // Get over-riding options from the address bar.
+	   var urlOptions = ioQuery.queryToObject(hash());
+
+	   // Mix these two objects together, overwriting anything in the pageOptions.
+	   atese.mixObj(urlOptions, pageOptions);
+	   // And make sure all appropriate strings are Boolean.
+	   atese.checkBools(pageOptions);
+
+	   // Begin by getting the first list of sources so we can start making the page.
+	   atese.setSorting(pageOptions.sorting);
 
 	   // The arrays controlling the layout of the measurement tables.
 	   var headCells = [ "MJD", "Epoch", "RA", "Dec", "Flux Density (Jy/beam)",
@@ -78,11 +82,10 @@ require( [ "dojo/dom-construct", "dojo/dom", "astrojs/base", "dojo/number", "./a
 
 	     // Determine the source name.
 	     var src = eId.replace(repString, "");
-	     console.log(src);
 
 	     // Get the current spectra display settings.
 	     var plottedSet = atese.getSourceProperty(src, "spectraSet");
-
+	     
 	     // Ask for earlier spectra.
 	     plottedSet.startEpoch += epochDelta;
 
@@ -96,8 +99,19 @@ require( [ "dojo/dom-construct", "dojo/dom", "astrojs/base", "dojo/number", "./a
 	     pageChange();
 	     
 	   };
+
+	   // Check if the source satisfy our "show" criteria.
+	   var showSource = function(src) {
+	     // We simply return true for now.
+	     return true;
+	   };
 	   
 	   var makeSourcePanel = function(src) {
+	     // Check that we haven't made the panel before now.
+	     if (atese.getSourceProperty(src, "pageElement")) {
+	       return;
+	     }
+	     
 	     // Make the container div.
 	     var sdiv = domConstruct.create('div', {
 	       'id': idMethods.sourceId(src),
@@ -134,73 +148,67 @@ require( [ "dojo/dom-construct", "dojo/dom", "astrojs/base", "dojo/number", "./a
 	     }, stitle);
 
 	     // Prepare areas for the data.
-	     if (pageOptions.fluxPlot) {
-	       var phdiv = domConstruct.create('div', {
-		 'class': "plotholder-div"
-	       }, sdiv);
-	       var pdiv = domConstruct.create('div', {
-		 'id': idMethods.plotId(src),
-		 'class': "plot-div"
-	       }, phdiv);
-	     }
+	     var phdiv = domConstruct.create('div', {
+	       'class': "plotholder-div"
+	     }, sdiv);
+	     var pdiv = domConstruct.create('div', {
+	       'id': idMethods.plotId(src),
+	       'class': "plot-div"
+	     }, phdiv);
 
-	     if (pageOptions.spectraPlot) {
-	       var shdiv = domConstruct.create('div', {
-		 'class': "plotholder-div"
-	       }, sdiv);
-	       var spdiv = domConstruct.create('div', {
-		 'id': idMethods.spectraId(src),
-		 'class': "plot-div"
-	       }, shdiv);
-	       var sldiv = domConstruct.create('div', {
-		 'id': idMethods.legendId(src),
-		 'class': "plot-legend-div"
-	       }, shdiv);
-	       var sndiv = domConstruct.create('div', {
-		 'class': "plot-navigation-div"
-	       }, shdiv);
-	       var prevDiv = domConstruct.create('div', {
-		 'id': idMethods.prevId(src),
-		 'innerHTML': "&lt; previous spectra",
-		 'class': "navigation-previous"
-	       }, sndiv);
-	       on(prevDiv, 'click', showDifferentSpectra);
-	       var nextDiv = domConstruct.create('div', {
-		 'id': idMethods.nextId(src),
-		 'innerHTML': "next spectra &gt;",
-		 'class': "navigation-next"
-	       }, sndiv);
-	       on(nextDiv, 'click', showDifferentSpectra);
+	     var shdiv = domConstruct.create('div', {
+	       'class': "plotholder-div"
+	     }, sdiv);
+	     var spdiv = domConstruct.create('div', {
+	       'id': idMethods.spectraId(src),
+	       'class': "plot-div"
+	     }, shdiv);
+	     var sldiv = domConstruct.create('div', {
+	       'id': idMethods.legendId(src),
+	       'class': "plot-legend-div"
+	     }, shdiv);
+	     var sndiv = domConstruct.create('div', {
+	       'class': "plot-navigation-div"
+	     }, shdiv);
+	     var prevDiv = domConstruct.create('div', {
+	       'id': idMethods.prevId(src),
+	       'innerHTML': "&lt; previous spectra",
+	       'class': "navigation-previous"
+	     }, sndiv);
+	     on(prevDiv, 'click', showDifferentSpectra);
+	     var nextDiv = domConstruct.create('div', {
+	       'id': idMethods.nextId(src),
+	       'innerHTML': "next spectra &gt;",
+	       'class': "navigation-next"
+	     }, sndiv);
+	     on(nextDiv, 'click', showDifferentSpectra);
+	     
+	     var tdiv = domConstruct.create('div', {
+	       'id': idMethods.tableId(src),
+	       'class': "table-div"
+	     }, sdiv);
+	     
+	     // Create the measurement table.
+	     var mTable = domConstruct.create('table', {
+	       'class': "source-div-measurements-table"
+	     }, tdiv);
+	     
+	     // Give it a header.
+	     var mHead = domConstruct.create('thead', null, mTable);
+	     var mHeadRow = domConstruct.create('tr', null, mHead);
+	     
+	     for (var i = 0; i < headCells.length; i++) {
+	       var mhCell = domConstruct.create('td', {
+		 'innerHTML': headCells[i]
+	       }, mHeadRow);
 	     }
 	     
-	     if (pageOptions.fluxTable) {
-	       var tdiv = domConstruct.create('div', {
-		 'id': idMethods.tableId(src),
-		 'class': "table-div"
-	       }, sdiv);
-
-	       // Create the measurement table.
-	       var mTable = domConstruct.create('table', {
-		 'class': "source-div-measurements-table"
-	       }, tdiv);
-
-	       // Give it a header.
-	       var mHead = domConstruct.create('thead', null, mTable);
-	       var mHeadRow = domConstruct.create('tr', null, mHead);
-
-	       for (var i = 0; i < headCells.length; i++) {
-		 var mhCell = domConstruct.create('td', {
-		   'innerHTML': headCells[i]
-		 }, mHeadRow);
-	       }
-
-	       // And the unpopulated body.
-	       var mBody = domConstruct.create('tbody', {
-		 'id': idMethods.measurementsId(src)
-	       }, mTable);
-	       atese.addSourceProperty(src, "tableBody", mBody);
-	     }
-
+	     // And the unpopulated body.
+	     var mBody = domConstruct.create('tbody', {
+	       'id': idMethods.measurementsId(src)
+	     }, mTable);
+	     atese.addSourceProperty(src, "tableBody", mBody);
+	   
 	     // The clearing div.
 	     var cdiv = domConstruct.create('div', {
 	       'class': "clear-div"
@@ -209,8 +217,6 @@ require( [ "dojo/dom-construct", "dojo/dom", "astrojs/base", "dojo/number", "./a
 	     atese.addSourceProperty(src, "pageElement", sdiv);
 	   };
 	   
-
-
 	   // Determine if an element is in the viewport.
 	   var isInViewport = function(node) {
 	     // Check if we're hidden.
@@ -219,7 +225,7 @@ require( [ "dojo/dom-construct", "dojo/dom", "astrojs/base", "dojo/number", "./a
 	     }
 	     var nodePos = domGeom.position(node);;
 	     var viewport = win.getBox();
-	     return ((nodePos.x > 0) && (nodePos.x < viewport.w) && (nodePos.y > (-1 * viewport.h)) &&
+	     return ((nodePos.x > 0) && (nodePos.x < viewport.w) && (nodePos.y > 0) &&
 		     (nodePos.y < (viewport.h * 2)));
 	   };
 
@@ -229,8 +235,11 @@ require( [ "dojo/dom-construct", "dojo/dom", "astrojs/base", "dojo/number", "./a
 	   // This variable is the number of sources to render at a time.
 	   var renderNumber = 30;
 	   // This variable is the index of the first source on the page.
-	   var renderIndex = 0;
-
+	   var renderedIndices = { 'min': -1, 'max': -1 };
+	   // This variable gets set to true when we need to put more sources on the page.
+	   var renderMore = false;
+	   // 
+	   
 	   // The reference DOM element.
 	   var referenceElement = dom.byId("first-source");
 	   // A direction to add new elements.
@@ -238,30 +247,115 @@ require( [ "dojo/dom-construct", "dojo/dom", "astrojs/base", "dojo/number", "./a
 
 	   // This routine renders the page.
 	   var pageRender = function(sourceList) {
+	     // We'll need to know the range of available sources later.
+	     var indexRange = atese.getIndexRange();
+	     
 	     if (!pageStarted) {
 	       // This is the first time rendering the page, so we do some
 	       // special things.
+	       // Add a div to the top of the page; when we see it, we'll
+	       // ask for more sources before the first displayed one.
+	       var moreBefore = domConstruct.create('div', {
+		 'class': "sources-needed",
+		 'id': "sources-needed-before",
+		 'innerHTML': "&nbsp;"
+	       }, referenceElement, "after");
+	       referenceElement = moreBefore;
+
+	       // Add a div to the bottom of the page; when we see it,
+	       // we'll ask for more sources after the last displayed one.
+	       var moreAfter = domConstruct.create('div', {
+		 'class': "sources-needed",
+		 'id': "sources-needed-after",
+		 'innerHTML': "&nbsp;"
+	       }, referenceElement, "after");
 
 	       pageStarted = true;
+	       // Make sure we can render the range we started with.
+	       renderedIndices.min = indexRange.min;
+	       renderedIndices.max = indexRange.min;
 	     };
 
-	     // Go through the source list and add those that are in the
-	     // right range, but aren't yet on the page.
-	     for (var i = renderIndex; i < renderIndex + renderNumber; i++) {
-	       if (!atese.getSourceProperty(sourceList[i], "on-page")) {
-		 // We need to add this source to the page.
-		 var srcPanel = atese.getSourceProperty(sourceList[i], "pageElement");
-		 if (srcPanel) {
-		   domConstruct.place(srcPanel, referenceElement, addDirection);
-		   referenceElement = srcPanel;
-		   atese.setSourceProperty(sourceList[i], "on-page", true);
-		   // Indicate that the source needs its flux density vs time plot made.
-		   atese.setSourceProperty(sourceList[i], "plotRender-required", true);
-		   // Indicate that the source needs its measurement table filled.
-		   atese.setSourceProperty(sourceList[i], "tableFill-required", true);
-		   // Indicate that the source needs its spectra plot made.
-		   atese.setSourceProperty(sourceList[i], "plotSpectra-required", true);
+	     var scrollReference = null;
+	     var scrollReferencePosition = null;
+	     
+	     if (renderMore) {
+	       // Go through the source list and add those that are in the
+	       // right range, but aren't yet on the page.
+
+	       // Make a list of all the sources that require rendering and that
+	       // should be rendered with our current selection.
+	       var renderRequired = [];
+	       for (var i = indexRange.min; i <= indexRange.max; i++) {
+		 if (!atese.getSourceProperty(sourceList[i], "on-page")) {
+		   if ((addDirection === "before" &&
+			i >= (renderedIndices.min - renderNumber) &&
+			i <= renderedIndices.min) ||
+		       (addDirection === "after" &&
+			i <= (renderedIndices.max + renderNumber) &&
+			i >= renderedIndices.max)) {
+		     renderRequired.push(i);
+		   }
 		 }
+	       }
+
+	       // Set the reference element.
+	       if (addDirection === "after") {
+		 // The reference element is the last source on the page.
+		 if (atese.getSourceProperty(sourceList[renderedIndices.max], "on-page")) {
+		   referenceElement = atese.getSourceProperty(sourceList[renderedIndices.max], "pageElement");
+		 }
+	       } else {
+		 // The reference element is the first source on the page.
+		 if (atese.getSourceProperty(sourceList[renderedIndices.min], "on-page")) {
+		   referenceElement = atese.getSourceProperty(sourceList[renderedIndices.min], "pageElement");
+		   // We also want to scroll back to this node after we add the new nodes.
+		   scrollReference = referenceElement;
+		   scrollReferencePosition = domGeom.position(scrollReference);
+		 }
+		 // Reverse the order of the render required array.
+		 renderRequired = renderRequired.reverse();
+	       }
+	       
+	       var numRendered = 0;
+	       for (var j = 0; j < renderRequired.length; j++) {
+		 if (numRendered === renderNumber) {
+		   break;
+		 }
+		 var i = renderRequired[j];
+		 if (!atese.getSourceProperty(sourceList[i], "on-page")) {
+		   // We need to add this source to the page.
+		   var srcPanel = atese.getSourceProperty(sourceList[i], "pageElement");
+		   if (srcPanel) {
+		     domConstruct.place(srcPanel, referenceElement, addDirection);
+		     referenceElement = srcPanel;
+		     atese.setSourceProperty(sourceList[i], "on-page", true);
+		     // Indicate that the source needs its flux density vs time plot made.
+		     atese.setSourceProperty(sourceList[i], "plotRender-required", true);
+		     // Indicate that the source needs its measurement table filled.
+		     atese.setSourceProperty(sourceList[i], "tableFill-required", true);
+		     // Indicate that the source needs its spectra plot made.
+		     atese.setSourceProperty(sourceList[i], "plotSpectra-required", true);
+		     
+		     // We've rendered another source.
+		     if (renderedIndices.min === -1 ||
+			 i < renderedIndices.min) {
+		       renderedIndices.min = i;
+		     }
+		     if (renderedIndices.max === -1 ||
+			 i > renderedIndices.max) {
+		       renderedIndices.max = i;
+		     }
+		     numRendered++;
+		   }
+		 }
+	       }
+
+	       renderMore = false;
+
+	       // Scroll back to a reference node if necessary.
+	       if (scrollReference !== null) {
+		 win.scrollIntoView(scrollReference);
 	       }
 	     }
 
@@ -270,77 +364,156 @@ require( [ "dojo/dom-construct", "dojo/dom", "astrojs/base", "dojo/number", "./a
 	     for (var i = 0; i < sourceList.length; i++) {
 	       if (atese.getSourceProperty(sourceList[i], "on-page")) {
 		 // The page element is on the DOM.
-		 // So we check for its position.
-		 if (isInViewport(atese.getSourceProperty(sourceList[i], "pageElement"))) {
-		   // Make sure all the quantities are up to date.
-		   atese.computeSource(sourceList[i], pageOptions.fluxDensityFrequency,
-				       pageOptions.siFlatLowValue,
-				       pageOptions.siFlatHighValue);
-		   
-		   // Render the plot.
-		   if (pageOptions.fluxPlot &&
-		       atese.getSourceProperty(sourceList[i], "plotRender-required")) {
-		     atesePlot.fluxDensityTimePlot(sourceList[i]);
-		     atese.setSourceProperty(sourceList[i], "plotRender-required", false);
-		   }
-		   // Fill the table.
-		   if (pageOptions.fluxTable &&
-		       atese.getSourceProperty(sourceList[i], "tableFill-required")) {
-		     atesePlot.fluxDensityTableFill(sourceList[i], cellIds);
-		     atese.setSourceProperty(sourceList[i], "tableFill-required", false);
-		   }
-		   // Show the spectra.
-		   if (pageOptions.spectraPlot &&
-		       atese.getSourceProperty(sourceList[i], "plotSpectra-required")) {
-		     console.log("preparing to plot spectra for " + sourceList[i]);
-		     var nEpochs = atese.numEpochs(sourceList[i]);
-		     var plotEpochs = pageOptions.nSpectraPlotted;
+		 // Check if it should be shown.
+		 var pageElement = atese.getSourceProperty(sourceList[i], "pageElement");
+		 if (!showSource(sourceList[i])) {
+		   // Hide the DOM element.
+		   domClass.add(pageElement, "hidden");
+		 } else {
+		   // Show the DOM element.
+		   domClass.remove(pageElement, "hidden");
 
-		     // Look for a set of already plotted epochs.
-		     var plottedSet = atese.getSourceProperty(sourceList[i], "spectraSet");
-		     var startEpoch;
-		     if (typeof plottedSet === 'undefined') {
-		       // We haven't made a plot yet, so we choose the latest epochs.
-		       startEpoch = nEpochs - plotEpochs;
-		       plottedSet = {
-			 'startEpoch': startEpoch
-		       };
-		     } else {
-		       // We just use what we've got.
-		       startEpoch = plottedSet.startEpoch;
-		     }
+		   // And check for its position.
+		   if (isInViewport(pageElement)) {
+		     // Make sure all the quantities are up to date.
+		     atese.computeSource(sourceList[i], pageOptions["fluxDensity-frequency"],
+					 pageOptions["spectralIndex-flat-low"],
+					 pageOptions["spectralIndex-flat-high"]);
 
-		     // Do some consistency checks.
-		     if ((startEpoch + plotEpochs) >= nEpochs) {
-		       startEpoch = nEpochs - plotEpochs;
+		     if (scrollReference === null) {
+		       // This is here to try and make scrolling nicer.
+		       var np = domGeom.position(pageElement);
+		       if (np.y > 0) {
+			 scrollReference = pageElement;
+			 scrollReferencePosition = np;
+		       }
 		     }
-		     if (startEpoch < 0) {
-		       startEpoch = 0;
+		     
+		     // Render the plot.
+		     if (pageOptions.fluxPlot &&
+			 atese.getSourceProperty(sourceList[i], "plotRender-required")) {
+		       // Make the plot.
+		       atesePlot.fluxDensityTimePlot(sourceList[i]);
+		       atese.setSourceProperty(sourceList[i], "plotRender-required", false);
+		     } else if (!pageOptions.fluxPlot) {
+		       // Hide the plot area.
+		       domClass.add(idMethods.plotId(sourceList[i]), "hidden");
 		     }
-		     if (nEpochs < plotEpochs) {
-		       plotEpochs = nEpochs;
+		     // Fill the table.
+		     if (pageOptions.fluxTable &&
+			 atese.getSourceProperty(sourceList[i], "tableFill-required")) {
+		       atesePlot.fluxDensityTableFill(sourceList[i], cellIds);
+		       atese.setSourceProperty(sourceList[i], "tableFill-required", false);
 		     }
-		     plottedSet.startEpoch = startEpoch;
-		     plottedSet.plotEpochs = plotEpochs;
-		     atese.setSourceProperty(sourceList[i], "spectraSet", plottedSet);
-		     atesePlot.fluxDensitySpectraPlot(sourceList[i], startEpoch, plotEpochs);
-		     atese.setSourceProperty(sourceList[i], "plotSpectra-required", false);
-
-		     // Update the status of the previous/next links.
-		     if (startEpoch === 0) {
-		       // Hide the previous link.
-		       domClass.add(idMethods.prevId(sourceList[i]), "hidden");
-		     } else {
-		       domClass.remove(idMethods.prevId(sourceList[i]), "hidden");
-		     }
-		     if ((startEpoch + plotEpochs) >= nEpochs) {
-		       // Hide the next link.
-		       domClass.add(idMethods.nextId(sourceList[i]), "hidden");
-		     } else {
-		       domClass.remove(idMethods.nextId(sourceList[i]), "hidden");
+		     // Show the spectra.
+		     if (pageOptions.spectraPlot &&
+			 atese.getSourceProperty(sourceList[i], "plotSpectra-required")) {
+		       var nEpochs = atese.numEpochs(sourceList[i]);
+		       var plotEpochs = parseInt(pageOptions.nSpectraPlotted);
+		       
+		       // Look for a set of already plotted epochs.
+		       var plottedSet = atese.getSourceProperty(sourceList[i], "spectraSet");
+		       var startEpoch;
+		       if (typeof plottedSet === 'undefined') {
+			 // We haven't made a plot yet, so we choose the latest epochs.
+			 startEpoch = nEpochs - plotEpochs;
+			 plottedSet = {
+			   'startEpoch': startEpoch
+			 };
+		       } else {
+			 // We just use what we've got.
+			 startEpoch = plottedSet.startEpoch;
+		       }
+		       
+		       // Do some consistency checks.
+		       var endEpoch = startEpoch + plotEpochs;
+		       if (endEpoch >= nEpochs) {
+			 startEpoch = nEpochs - plotEpochs;
+		       }
+		       if (startEpoch < 0) {
+			 startEpoch = 0;
+		       }
+		       if (nEpochs < plotEpochs) {
+			 plotEpochs = nEpochs;
+		       }
+		       plottedSet.startEpoch = startEpoch;
+		       plottedSet.plotEpochs = plotEpochs;
+		       atese.setSourceProperty(sourceList[i], "spectraSet", plottedSet);
+		       atesePlot.fluxDensitySpectraPlot(sourceList[i], startEpoch, plotEpochs);
+		       atese.setSourceProperty(sourceList[i], "plotSpectra-required", false);
+		       
+		       // Update the status of the previous/next links.
+		       if (startEpoch === 0) {
+			 // Hide the previous link.
+			 domClass.add(idMethods.prevId(sourceList[i]), "hidden");
+		       } else {
+			 domClass.remove(idMethods.prevId(sourceList[i]), "hidden");
+		       }
+		       if ((startEpoch + plotEpochs) >= nEpochs) {
+			 // Hide the next link.
+			 domClass.add(idMethods.nextId(sourceList[i]), "hidden");
+		       } else {
+			 domClass.remove(idMethods.nextId(sourceList[i]), "hidden");
+		       }
 		     }
 		   }
 		 }
+	       }
+	     }
+	     
+	     // Scroll back to a reference node if necessary.
+	     if (scrollReference !== null) {
+	       var nPosition = domGeom.position(scrollReference);
+	       // Scroll by the difference from the reference position.
+	       var dy = nPosition.y - scrollReferencePosition.y;
+	       if (Math.abs(dy) > 20) {
+		 window.scrollBy(0, dy);
+	       }
+	     }
+
+	     // Delete our end bits if we have rendered everything in a
+	     // particular direction.
+	     if (renderedIndices.max === (sourceList.length - 1)) {
+	       // No more sources can be gotten at the end.
+	       domConstruct.destroy("sources-needed-after");
+	     }
+	     if (renderedIndices.min === 0) {
+	       // No more sources can be gotten at the start.
+	       domConstruct.destroy("sources-needed-before");
+	     }
+	     
+	     // Check now if we can see our end bits.
+	     if (dom.byId("sources-needed-after") &&
+		 isInViewport(dom.byId("sources-needed-after"))) {
+	       // Need to do more rendering.
+	       addDirection = "after";
+	       renderMore = true;
+	     } else if (dom.byId("sources-needed-before") &&
+			isInViewport(dom.byId("sources-needed-before"))) {
+	       // Need to do more rendering.
+	       addDirection = "before";
+	       renderMore = true;
+	     }
+
+	     if (renderMore) {
+	       // Check if we have more sources to render.
+	       if (addDirection === "after" &&
+		   renderedIndices.max === indexRange.max) {
+		 // We need to download more sources.
+		 var g = atese.getMoreSources("after");
+		 if (g) {
+		   g.then(handleSourceList);
+		 }
+	       } else if (addDirection === "before" &&
+			  renderedIndices.min === indexRange.min) {
+		 // We need to download more sources.
+		 var g = atese.getMoreSources("before");
+		 if (g) {
+		   g.then(handleSourceList);
+		 }
+	       } else {
+		 // Just keep rendering with the stuff we have.
+		 pageRender(sourceList);
 	       }
 	     }
 	     
@@ -357,6 +530,19 @@ require( [ "dojo/dom-construct", "dojo/dom", "astrojs/base", "dojo/number", "./a
 	     while (scrollTimer.isRunning) {
 	       scrollTimer.stop();
 	     }
+
+	     // Check whether we need to get more sources from the server.
+	     if (dom.byId("sources-needed-after") &&
+		 isInViewport(dom.byId("sources-needed-after"))) {
+	       // Ask for more sources after the last displayed one.
+	       addDirection = "after";
+	       renderMore = true;
+	     } else if (dom.byId("sources-needed-before") &&
+			isInViewport(dom.byId("sources-needed-before"))) {
+	       // Ask for more sources before the last displayed one.
+	       addDirection = "before";
+	       renderMore = true;
+	     }
 	     
 	     // Get the list of sources in the right order and give it to
 	     // the rendering function.
@@ -372,17 +558,63 @@ require( [ "dojo/dom-construct", "dojo/dom", "astrojs/base", "dojo/number", "./a
 	     }
 	     scrollTimer.start();
 	   };
-	   
-	   atese.getFirstSources().then(function(data) {
-	     // Start handling the scroll event.
-	     on(window, 'scroll', scrollCheck);
+
+	   // Handle changes to the hash.
+	   topic.subscribe("/dojo/hashchange", function(h) {
+	     // Turn the new hash into an object.
+	     var uh = ioQuery.queryToObject(h);
+
+	     // Keep a copy of the current options.
+	     var oldOptions = lang.clone(pageOptions);
 	     
+	     // Get the default page options again.
+	     pageOptions = lang.clone(defaultPageOptions);
+	     
+	     // Mix the new hash back with the page options.
+	     atese.mixObj(uh, pageOptions);
+	     atese.checkBools(pageOptions);
+
+	     // If we change the sort order, we need to reload the page.
+	     if (oldOptions.sorting !== pageOptions.sorting) {
+	       window.location.reload(true);
+	     } else {
+	       // We can handle this change with a page refresh.
+	       pageChange();
+	     }
+	   });
+
+	   var scrollHandled = false;
+	   
+	   // Deal with a source list.
+	   var handleSourceList = function(data) {
+	     if (typeof data === 'undefined' ||
+		 typeof data.data === 'undefined') {
+	       // Something went wrong.
+	       return;
+	     }
+
+	     // We only want to start handling the scroll event when
+	     // we have sources on the page.
+	     if (!scrollHandled) {
+	       // Start handling the scroll event.
+	       on(window, 'scroll', scrollCheck);
+	       scrollHandled = true;
+	     }
+
+	     // Make the panels for each of the sources we
+	     // now know about.
 	     for (var s in data.data) {
 	       if (data.data.hasOwnProperty(s)) {
 		 makeSourcePanel(s);
 	       }
 	     }
+	     
+	     // Render the page with the new source list.
+	     renderMore = true;
 	     pageChange();
-	   });
+	     
+	   };
+
+	   atese.getFirstSources(pageOptions.firstSource).then(handleSourceList);
 	   
 	 });

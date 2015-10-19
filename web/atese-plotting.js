@@ -55,6 +55,8 @@ define( [ "./atese-common.js", "dojox/charting/Chart", "dojox/charting/SimpleThe
 	    if (!dom.byId(plotId)) {
 	      return;
 	    }
+	    // Remove any hidden class.
+	    domClass.remove(plotId, "hidden");
 	    
 	    // Only make plots for those sources with more than one measurement.
 	    var nEpochs = atese.numEpochs(src);

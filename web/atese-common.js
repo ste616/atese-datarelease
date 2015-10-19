@@ -6,11 +6,15 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate" ],
 
 	   // Some private variables that we use throughout.
 	   var _sortMethod = "ra"; // By default, we ask for the sources in R.A. order.
+	   var _defaultNumSources = 100; // The number of sources to get from the server at once.
 	   
 	   var _inFlight = false; // Set to true when a Node.js query is made.
 	   // The storage.
 	   var _sourceStorage = {};
 	   var _sourceLists = {};
+	   var _sourceKeys = {};
+	   // Indicators for the range of sources we currently have.
+	   var _sourceIndices = {};
 
 	   // Storage for our page clients to keep state.
 	   var _clientStorage = {};
@@ -19,17 +23,59 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate" ],
 
 	   // The routine that handles communications with the Node.js server.
 	   var _comms_node = function(q) {
+	     // Where do we go to get the data?
 	     var hostName = window.location.hostname;
 	     var protocol = window.location.protocol;
+
+	     // Automatically add the sorting method to each query so our
+	     // callers don't have to.
+	     q.sortBy = _sortMethod;
+
+	     // Mark the query as started and begin the data request.
 	     _inFlight = true;
 	     var p = xhr(protocol + "//" + hostName + ":8001/datarelease/", {
 	       'handleAs': "json",
 	       'query': q
 	     });
 
+	     // Return our promise.
 	     return p;
 	   };
 
+	   // Go through the source storage and determine the range of sources
+	   // in the source list that we actually have.
+	   var _indexSources = function() {
+	     // Initialise our source index if it doesn't yet exist.
+	     if (typeof _sourceIndices[_sortMethod] === 'undefined') {
+	       _sourceIndices[_sortMethod] = { 'min': -1, 'max': -1 };
+	     }
+
+	     // Check we actually have information about the current sorting
+	     // method.
+	     if (typeof _sourceLists[_sortMethod] === 'undefined' ||
+		 typeof _sourceKeys[_sortMethod] === 'undefined') {
+	       return;
+	     }
+	     
+	     for (var s in _sourceStorage) {
+	       if (_sourceStorage.hasOwnProperty(s) &&
+		   _sourceKeys[_sortMethod].hasOwnProperty(s)) {
+		 if (_sourceIndices[_sortMethod].min === -1 ||
+		     _sourceKeys[_sortMethod][s] < _sourceIndices[_sortMethod].min) {
+		   _sourceIndices[_sortMethod].min = _sourceKeys[_sortMethod][s];
+		 }
+		 if (_sourceIndices[_sortMethod].max === -1 ||
+		     _sourceKeys[_sortMethod][s] > _sourceIndices[_sortMethod].max) {
+		   _sourceIndices[_sortMethod].max = _sourceKeys[_sortMethod][s];
+		 }
+	       }
+	     }
+
+	     // Debugging.
+	     console.log("min: " + _sourceIndices[_sortMethod].min +
+			 " max: " + _sourceIndices[_sortMethod].max);
+	   };
+	     
 	   // Method to get the entire list of sources in the sort order that
 	   // we've requested, and cache it.
 	   var _get_source_list = function() {
@@ -37,7 +83,18 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate" ],
 	       if (typeof(data) !== 'undefined' &&
 		   typeof(data.sourceList) !== 'undefined') {
 		 _sourceLists[_sortMethod] = data.sourceList;
+
+		 // Turn the array into an object that has the source name as
+		 // the key, and the index as the value.
+		 _sourceKeys[_sortMethod] = {};
+		 for (var i = 0; i < _sourceLists[_sortMethod].length; i++) {
+		   _sourceKeys[_sortMethod][_sourceLists[_sortMethod][i]] = i;
+		 }
 	       }
+
+	       // Index the sources.
+	       _indexSources();
+	       
 	       return data;
 	     });
 	   };
@@ -48,7 +105,8 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate" ],
 	     if (typeof(data) !== 'undefined' &&
 		 typeof(data.data) !== 'undefined') {
 	       for (var s in data.data) {
-		 if (data.data.hasOwnProperty(s)) {
+		 if (data.data.hasOwnProperty(s) &&
+		     !_sourceStorage.hasOwnProperty(s)) {
 		   _sourceStorage[s] = data.data[s];
 		   // Turn the right ascension and declination into a SkyCoord.
 		   var l = data.data[s].rightAscension.length - 1;
@@ -63,6 +121,10 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate" ],
 		   _sourceStorage[s].upToDate = false;
 		 }
 	       }
+
+	       // Index the sources.
+	       _indexSources();
+	       
 	       return data;
 	     } else {
 	       return;
@@ -79,11 +141,11 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate" ],
 	       cobj.source = src;
 	     }
 
-	     if (nsrc > 0) {
+	     if (nsrc !== 0) {
 	       cobj.nsources = nsrc;
 	     } else {
 	       // By default we ask for 100 sources.
-	       cobj.nsources = 100;
+	       cobj.nsources = _defaultNumSources;
 	     }
 
 	     if (includeSource) {
@@ -209,11 +271,36 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate" ],
 	   // Our public methods.
 
 	   // Method to get the first set of sources from the server.
-	   var _getFirstSources = function() {
+	   var _getFirstSources = function(firstSource) {
+	     if (typeof firstSource === 'undefined') {
+	       firstSource = null;
+	     }
 	     // Use our general method to do this.
-	     return _getSources(null, 0, false);
+	     return _getSources(firstSource, 0, true);
 	   };
 	   rObj.getFirstSources = _getFirstSources;
+
+	   // Method to get more sources either before the current list, or
+	   // after it.
+	   var _getMoreSources = function(direction) {
+	     // Check that we can automatically determine the parameters
+	     // we need.
+	     if (typeof _sourceLists[_sortMethod] === 'undefined' ||
+		 typeof _sourceIndices[_sortMethod] === 'undefined') {
+	       return undefined;
+	     }
+	     if (direction === "after") {
+	       return _getSources(_sourceLists[_sortMethod][_sourceIndices[_sortMethod].max + 1],
+				  0, true);
+	     } else if (direction === "before") {
+	       var sindex = _sourceIndices[_sortMethod].min - _defaultNumSources;
+	       if (sindex < 0) {
+		 sindex = 0;
+	       }
+	       return _getSources(_sourceLists[_sortMethod][sindex], 0, true);
+	     }
+	   };
+	   rObj.getMoreSources = _getMoreSources;
 	   
 	   // Method to set the sorting of the source list.
 	   var _setSorting = function(v) {
@@ -447,6 +534,55 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate" ],
 	     }
 	   };
 	   rObj.getEpochSpectrum = _getEpochSpectrum;
+
+	   // This method takes two objects, and copies any properties from
+	   // the src object into the dest object, optionally checking for
+	   // an existing property in dest to prevent the copying.
+	   var _mixObj = function(src, dest, opt) {
+	     // Check for an options object.
+	     if (typeof opt === 'undefined') {
+	       opt = {};
+	     }
+	     // Check for the overwrite property in the opt object.
+	     if (typeof opt.overwrite === 'undefined') {
+	       // By default we overwrite exisiting properties in dest.
+	       opt.overwrite = true;
+	     }
+	     
+	     // Go through the properties in src.
+	     if (typeof src !== 'undefined' &&
+		 typeof dest !== 'undefined') {
+	       for (var p in src) {
+		 if (src.hasOwnProperty(p)) {
+		   if (typeof dest[p] === 'undefined' || opt.overwrite) {
+		     dest[p] = src[p];
+		   }
+		 }
+	       }
+	     }
+	   };
+	   rObj.mixObj = _mixObj;
+
+	   // This method scans an object for string values that really
+	   // should be Boolean and converts them.
+	   var _checkBools = function(o) {
+	     if (typeof o !== 'undefined') {
+	       for (var p in o) {
+		 if (o.hasOwnProperty(p) &&
+		     (o[p] === "true" || o[p] === "false")) {
+		   o[p] = (o[p] === "true");
+		 }
+	       }
+	     }
+	   };
+	   rObj.checkBools = _checkBools;
+
+	   // This method returns the index range for the sources we currently know
+	   // about.
+	   var _getIndexRange = function() {
+	     return _sourceIndices[_sortMethod];
+	   };
+	   rObj.getIndexRange = _getIndexRange;
 	   
 	   // Return our object.
 	   return rObj;

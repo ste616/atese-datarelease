@@ -64,6 +64,15 @@ module.exports = function(query) {
     return { 'sourceList': sortedLists[sortFunction] };
   }
 
+  // Translate the Boolean for "next".
+  if (query.next) {
+    if (query.next === 'true') {
+      query.next = true;
+    } else if (query.next === 'false') {
+      query.next = false;
+    }
+  }
+
   // Otherwise, we're going to return the JSON describing some sources.
   // By default, we return the first source.
   var sourcesToReturn = [ 0 ];
