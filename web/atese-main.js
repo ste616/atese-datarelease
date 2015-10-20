@@ -44,6 +44,9 @@ require( [ "dojo/dom-construct", "dojo/dom", "astrojs/base", "dojo/number", "./a
 
 	   // Get the options set by our form on the page.
 	   var pageOptions = domForm.toObject("showForm");
+	   // Add to it the hidden default options.
+	   var hiddenOptions = domForm.toObject("hiddenForm");
+	   atese.mixObj(hiddenOptions, pageOptions);
 	   // Make a copy for the default.
 	   var defaultPageOptions = lang.clone(pageOptions);
 	   
@@ -52,6 +55,9 @@ require( [ "dojo/dom-construct", "dojo/dom", "astrojs/base", "dojo/number", "./a
 
 	   // Mix these two objects together, overwriting anything in the pageOptions.
 	   atese.mixObj(urlOptions, pageOptions);
+	   // Mix the hidden options with the URL options, but only take the
+	   // appropriately hidden parameters.
+	   atese.mixObj(urlOptions, hiddenOptions, { 'onlyDestination': true });
 	   // And make sure all appropriate strings are Boolean.
 	   atese.checkBools(pageOptions);
 
@@ -172,13 +178,13 @@ require( [ "dojo/dom-construct", "dojo/dom", "astrojs/base", "dojo/number", "./a
 	     }, shdiv);
 	     var prevDiv = domConstruct.create('div', {
 	       'id': idMethods.prevId(src),
-	       'innerHTML': "&lt; previous spectra",
+	       'innerHTML': "&lt;-- previous spectra",
 	       'class': "navigation-previous"
 	     }, sndiv);
 	     on(prevDiv, 'click', showDifferentSpectra);
 	     var nextDiv = domConstruct.create('div', {
 	       'id': idMethods.nextId(src),
-	       'innerHTML': "next spectra &gt;",
+	       'innerHTML': "next spectra --&gt;",
 	       'class': "navigation-next"
 	     }, sndiv);
 	     on(nextDiv, 'click', showDifferentSpectra);
@@ -238,7 +244,6 @@ require( [ "dojo/dom-construct", "dojo/dom", "astrojs/base", "dojo/number", "./a
 	   var renderedIndices = { 'min': -1, 'max': -1 };
 	   // This variable gets set to true when we need to put more sources on the page.
 	   var renderMore = false;
-	   // 
 	   
 	   // The reference DOM element.
 	   var referenceElement = dom.byId("first-source");
@@ -559,6 +564,18 @@ require( [ "dojo/dom-construct", "dojo/dom", "astrojs/base", "dojo/number", "./a
 	     scrollTimer.start();
 	   };
 
+	   // Handle changes to the options form.
+	   on(dom.byId("button-show-sources"), 'click', function(e) {
+	     // Get the options set by the form on the page.
+	     var formOptions = domForm.toObject("showForm");
+	     // Mix in the hidden options.
+	     atese.mixObj(hiddenOptions, formOptions);
+	     // Turn it into a hash.
+	     var nh = ioQuery.objectToQuery(formOptions);
+	     // Set it into the address.
+	     hash(nh);
+	   });
+	   
 	   // Handle changes to the hash.
 	   topic.subscribe("/dojo/hashchange", function(h) {
 	     // Turn the new hash into an object.
@@ -574,11 +591,25 @@ require( [ "dojo/dom-construct", "dojo/dom", "astrojs/base", "dojo/number", "./a
 	     atese.mixObj(uh, pageOptions);
 	     atese.checkBools(pageOptions);
 
-	     // If we change the sort order, we need to reload the page.
-	     if (oldOptions.sorting !== pageOptions.sorting) {
+	     // Check for conditions that require reloading the page.
+	     if (oldOptions.sorting !== pageOptions.sorting ||
+		 oldOptions.firstSource !== pageOptions.firstSource ||
+		 oldOptions.showSource !== pageOptions.showSource) {
 	       window.location.reload(true);
 	     } else {
 	       // We can handle this change with a page refresh.
+	       // Do we need to remake any plots or tables?
+	       if (oldOptions["fluxDensity-frequency"] !== pageOptions["fluxDensity-frequency"]) {
+		 atese.resetAllSourcesProperty("plotRender-required", true);
+		 atese.resetAllSourcesProperty("tableFill-required", true);
+		 atese.resetAllSourcesProperty("upToDate", false);
+	       }
+	       if (oldOptions["spectralIndex-flat-low"] !== pageOptions["spectralIndex-flat-low"] ||
+		   oldOptions["spectralIndex-flat-high"] !== pageOptions["spectralIndex-flat-high"]) {
+		 atese.resetAllSourcesProperty("plotRender-required", true);
+		 atese.resetAllSourcesProperty("upToDate", false);
+	       }
+	       // Refresh the page now.
 	       pageChange();
 	     }
 	   });

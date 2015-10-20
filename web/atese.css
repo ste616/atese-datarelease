@@ -30,8 +30,8 @@ h3 { font-weight: bold; font-size: 1.1em; margin: 0.2em; }
 .clear-div { clear: both; }
 .plotholder-div { margin: 0.6em; float: left; }
 .plot-navigation-div { clear: both; width: 100%; cursor: pointer; }
-.navigation-previous { float: left; cursor: pointer; }
-.navigation-next { float: right; text-align: right; }
+.navigation-previous { float: left; cursor: pointer; color: red; font-weight: bold; }
+.navigation-next { float: right; text-align: right; color: red; font-weight: bold; }
 .table-div { margin: 0.6em; clear: both; }
 .table-div > table { width: 100%; }
 #selection-area { background-color: #87cefa; position: fixed; width: 19em; }

@@ -71,9 +71,6 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate" ],
 	       }
 	     }
 
-	     // Debugging.
-	     console.log("min: " + _sourceIndices[_sortMethod].min +
-			 " max: " + _sourceIndices[_sortMethod].max);
 	   };
 	     
 	   // Method to get the entire list of sources in the sort order that
@@ -358,6 +355,25 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate" ],
 	   };
 	   rObj.getSourceProperty = _getSourceProperty;
 
+	   // Set a property in the source storage for all current sources.
+	   var _setAllSourcesProperty = function(propName, val) {
+	     for (var i = 0; i < _sourceLists[_sortMethod].length; i++) {
+	       _addSourceProperty(_sourceLists[_sortMethod][i], propName, val);
+	     }
+	   };
+	   rObj.setAllSourcesProperty = _setAllSourcesProperty;
+
+	   // Reset a property in the source storage for all current sources,
+	   // only if the property already exists for it.
+	   var _resetAllSourcesProperty = function(propName, val) {
+	     for (var i = 0; i < _sourceLists[_sortMethod].length; i++) {
+	       if (typeof _getSourceProperty(_sourceLists[_sortMethod][i], propName) !== 'undefined') {
+		 _addSourceProperty(_sourceLists[_sortMethod][i], propName, val);
+	       }
+	     }
+	   };
+	   rObj.resetAllSourcesProperty = _resetAllSourcesProperty;
+	   
 	   // Get the list of sources in the requested order.
 	   var _getSourceList = function() {
 	     // Check for the cached version.
@@ -395,7 +411,8 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate" ],
 	     if (_sourceStorage.hasOwnProperty(src)) {
 	       // Check if we need to do anything.
 	       if (!_sourceStorage[src].upToDate) {
-
+		 console.log('updating source ' + src + ' calculation');
+		 console.log(lowFlat + ' to ' + highFlat);
 		 // Calculate the flux densities and spectral indices.
 		 _sourceStorage[src].computedFluxDensity =
 		   _sourceStorage[src].fluxDensityFit.map(_fluxDensityAtFrequency(frequency));
@@ -548,14 +565,22 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate" ],
 	       // By default we overwrite exisiting properties in dest.
 	       opt.overwrite = true;
 	     }
+	     // Check for the onlyDestination property in the opt object.
+	     if (typeof opt.onlyDestination) {
+	       // By default we copy everything in the src to the dest.
+	       opt.onlyDestination = false;
+	     }
 	     
 	     // Go through the properties in src.
 	     if (typeof src !== 'undefined' &&
 		 typeof dest !== 'undefined') {
 	       for (var p in src) {
 		 if (src.hasOwnProperty(p)) {
-		   if (typeof dest[p] === 'undefined' || opt.overwrite) {
-		     dest[p] = src[p];
+		   if (!opt.onlyDestination ||
+		       dest.hasOwnProperty(p)) {
+		     if (typeof dest[p] === 'undefined' || opt.overwrite) {
+		       dest[p] = src[p];
+		     }
 		   }
 		 }
 	       }
