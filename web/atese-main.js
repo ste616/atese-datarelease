@@ -254,6 +254,9 @@ require( [ "dojo/dom-construct", "dojo/dom", "astrojs/base", "dojo/number", "./a
 	   var pageRender = function(sourceList) {
 	     // We'll need to know the range of available sources later.
 	     var indexRange = atese.getIndexRange();
+	     // Put the number of sources available on the page.
+	     domAttr.set("nsources-available", "innerHTML", atese.numberSourcesAvailable());
+	     domAttr.set("nsources-loaded", "innerHTML", atese.numberSourcesLoaded());
 	     
 	     if (!pageStarted) {
 	       // This is the first time rendering the page, so we do some
@@ -366,6 +369,7 @@ require( [ "dojo/dom-construct", "dojo/dom", "astrojs/base", "dojo/number", "./a
 
 	     // Make plots for those sources that we can currently see in
 	     // the viewport.
+	     var numberSourcesShown = 0;
 	     for (var i = 0; i < sourceList.length; i++) {
 	       if (atese.getSourceProperty(sourceList[i], "on-page")) {
 		 // The page element is on the DOM.
@@ -377,6 +381,7 @@ require( [ "dojo/dom-construct", "dojo/dom", "astrojs/base", "dojo/number", "./a
 		 } else {
 		   // Show the DOM element.
 		   domClass.remove(pageElement, "hidden");
+		   numberSourcesShown++;
 
 		   // And check for its position.
 		   if (isInViewport(pageElement)) {
@@ -444,7 +449,8 @@ require( [ "dojo/dom-construct", "dojo/dom", "astrojs/base", "dojo/number", "./a
 		       plottedSet.startEpoch = startEpoch;
 		       plottedSet.plotEpochs = plotEpochs;
 		       atese.setSourceProperty(sourceList[i], "spectraSet", plottedSet);
-		       atesePlot.fluxDensitySpectraPlot(sourceList[i], startEpoch, plotEpochs);
+		       atesePlot.fluxDensitySpectraPlot(sourceList[i], startEpoch, plotEpochs,
+							pageOptions.spectralAveraging);
 		       atese.setSourceProperty(sourceList[i], "plotSpectra-required", false);
 		       
 		       // Update the status of the previous/next links.
@@ -465,6 +471,7 @@ require( [ "dojo/dom-construct", "dojo/dom", "astrojs/base", "dojo/number", "./a
 		 }
 	       }
 	     }
+	     domAttr.set("nsources-shown", "innerHTML", numberSourcesShown);
 	     
 	     // Scroll back to a reference node if necessary.
 	     if (scrollReference !== null) {
@@ -548,7 +555,7 @@ require( [ "dojo/dom-construct", "dojo/dom", "astrojs/base", "dojo/number", "./a
 	       addDirection = "before";
 	       renderMore = true;
 	     }
-	     
+
 	     // Get the list of sources in the right order and give it to
 	     // the rendering function.
 	     when(atese.getSourceList(), pageRender);

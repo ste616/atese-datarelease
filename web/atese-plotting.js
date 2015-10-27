@@ -200,7 +200,7 @@ define( [ "./atese-common.js", "dojox/charting/Chart", "dojox/charting/SimpleThe
 	  rObj.fluxDensityTableFill = _fluxDensityTableFill;
 
 	  // Make a spectra plot.
-	  var _fluxDensitySpectraPlot = function(src, startIndex, nSpectra) {
+	  var _fluxDensitySpectraPlot = function(src, startIndex, nSpectra, avg) {
 	    // Check the plot area has been put on the page.
 	    var plotId = _idMethods.spectraId(src);
 	    if (!dom.byId(plotId)) {
@@ -267,7 +267,7 @@ define( [ "./atese-common.js", "dojox/charting/Chart", "dojox/charting/SimpleThe
 		'innerHTML': atese.getEpochName(src, n)
 	      }, _idMethods.legendId(src));
 	      domStyle.set(leg, "color", tcol);
-	      when(atese.getEpochSpectrum(src, n, tcol), function(spectraData) {
+	      when(atese.getEpochSpectrum(src, n, tcol, avg), function(spectraData) {
 		// Plot the spectrum on the plot.
 		if (typeof spectraData === 'undefined') {
 		  // Something went wrong.

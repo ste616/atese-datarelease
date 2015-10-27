@@ -411,8 +411,6 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate" ],
 	     if (_sourceStorage.hasOwnProperty(src)) {
 	       // Check if we need to do anything.
 	       if (!_sourceStorage[src].upToDate) {
-		 console.log('updating source ' + src + ' calculation');
-		 console.log(lowFlat + ' to ' + highFlat);
 		 // Calculate the flux densities and spectral indices.
 		 _sourceStorage[src].computedFluxDensity =
 		   _sourceStorage[src].fluxDensityFit.map(_fluxDensityAtFrequency(frequency));
@@ -469,7 +467,13 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate" ],
 	   rObj.getEpochName = _getEpochName;
 	   
 	   // Get the spectral information for a source's nth epoch.
-	   var _getEpochSpectrum = function(src, n, col) {
+	   var _getEpochSpectrum = function(src, n, col, avg) {
+	     // Set a default averaging.
+	     if (typeof avg === 'undefined') {
+	       avg = 1;
+	     } else {
+	       avg = parseInt(avg);
+	     }
 	     if (_sourceStorage.hasOwnProperty(src) &&
 		 _sourceStorage[src].epochs.length > n) {
 
@@ -494,7 +498,11 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate" ],
 	       } else {
 		 // Form the file name.
 		 var epoch = _sourceStorage[src].epochs[n];
-		 var efname = epoch + "/" + src + "_" + epoch + ".json";
+		 var efname = epoch + "/" + src + "_" + epoch;
+		 if (avg === 32 || avg === 64 || avg == 128) {
+		   efname += ".averaged" + avg;
+		 }
+		 efname += ".json";
 
 		 // Grab the file.
 		 return xhr.get("datarelease/" + efname, {
@@ -608,6 +616,19 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate" ],
 	     return _sourceIndices[_sortMethod];
 	   };
 	   rObj.getIndexRange = _getIndexRange;
+
+	   // This method returns the number of sources that are known about.
+	   var _numberSourcesAvailable = function() {
+	     return _sourceLists[_sortMethod].length;
+	   };
+	   rObj.numberSourcesAvailable = _numberSourcesAvailable;
+	   
+	   // This method returns the number of sources that have been loaded.
+	   var _numberSourcesLoaded = function() {
+	     return (_sourceIndices[_sortMethod].max - _sourceIndices[_sortMethod].min + 1);
+
+	   };
+	   rObj.numberSourcesLoaded = _numberSourcesLoaded;
 	   
 	   // Return our object.
 	   return rObj;
