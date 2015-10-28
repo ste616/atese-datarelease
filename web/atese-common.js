@@ -577,7 +577,7 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate" ],
 	     if (typeof opt.onlyDestination) {
 	       // By default we copy everything in the src to the dest.
 	       opt.onlyDestination = false;
-	     }
+	     } // Otherwise, we only copy values in src that already exist in dest.
 	     
 	     // Go through the properties in src.
 	     if (typeof src !== 'undefined' &&

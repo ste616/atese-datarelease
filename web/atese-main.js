@@ -49,6 +49,17 @@ require( [ "dojo/dom-construct", "dojo/dom", "astrojs/base", "dojo/number", "./a
 	   atese.mixObj(hiddenOptions, pageOptions);
 	   // Make a copy for the default.
 	   var defaultPageOptions = lang.clone(pageOptions);
+	   // Add to the default options the values to deselect the checkboxes.
+	   atese.mixObj({
+	     'use-show-nepochs': "no",
+	     'use-show-defect': "no",
+	     'use-show-closure': "no",
+	     'use-show-fluxDensity': "no",
+	     'show-variable-spectralIndex': "no",
+	     'show-constant-spectralIndex': "no",
+	     'use-fluxDensity-deviation': "no",
+	     'use-show-position': "no"
+	   }, defaultPageOptions, { 'overwrite': false });
 	   
 	   // Get over-riding options from the address bar.
 	   var urlOptions = ioQuery.queryToObject(hash());
@@ -605,6 +616,18 @@ require( [ "dojo/dom-construct", "dojo/dom", "astrojs/base", "dojo/number", "./a
 	       window.location.reload(true);
 	     } else {
 	       // We can handle this change with a page refresh.
+	       // Update the form on the page.
+	       for (var d in pageOptions) {
+		 if (pageOptions.hasOwnProperty(d)) {
+		   var a = query('[name="' + d + '"]');
+		   if (domAttr.get(a[0], 'type') === "checkbox") {
+		     a[0].checked = (pageOptions[d] === "yes");
+		   } else {
+		     domAttr.set(a[0], 'value', pageOptions[d]);
+		   }
+		 }
+	       }
+	       
 	       // Do we need to remake any plots or tables?
 	       if (oldOptions["fluxDensity-frequency"] !== pageOptions["fluxDensity-frequency"]) {
 		 atese.resetAllSourcesProperty("plotRender-required", true);
