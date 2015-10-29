@@ -118,7 +118,116 @@ require( [ "dojo/dom-construct", "dojo/dom", "astrojs/base", "dojo/number", "./a
 	   };
 
 	   // Check if the source satisfy our "show" criteria.
+	   var evaluationRoutines = {
+	     // Number of epochs.
+	     'numEpochs': function(srcData) {
+	       if (srcData.epochs.length >= pageOptions['show-nepochs']) {
+		 return true;
+	       }
+	       return false;
+	     },
+	     'defect': function(srcData) {
+	       for (var i = 0; i < srcData.defect.length; i++) {
+		 if (srcData.defect[i] <= parseFloat(pageOptions['show-defect'])) {
+		   return true;
+		 }
+	       }
+	       return false;
+	     },
+	     'closurePhase': function(srcData) {
+	       for (var i = 0; i < srcData.closurePhase.length; i++) {
+		 if (Math.abs(srcData.closurePhase[i]) <= parseFloat(pageOptions['show-closure'])) {
+		   return true;
+		 }
+	       }
+	       return false;
+	     },
+	     'fluxDensity': function(srcData) {
+	       if (typeof srcData.computedFluxDensity !== "undefined") {
+		 for (var i = 0; i < srcData.computedFluxDensity.length; i++) {
+		   if (srcData.computedFluxDensity[i] >= parseFloat(pageOptions['show-fluxDensity'])) {
+		     return true;
+		   }
+		 }
+		 return false;
+	       } else {
+		 return true;
+	       }
+	     },
+	     'variableSpectralIndex': function(srcData) {
+	       if (typeof srcData.siClassification !== 'undefined') {
+		 var c = srcData.siClassification[0];
+		 for (var i = 1; i < srcData.siClassification.length; i++) {
+		   if (srcData.siClassification[i] !== c) {
+		     return true;
+		   }
+		 }
+		 return false;
+	       } else {
+		 return true;
+	       }
+	     },
+	     'constantSpectralIndex': function(srcData) {
+	       if (typeof srcData.siClassification !== 'undefined') {
+		 var c = srcData.siClassification[0];
+		 for (var i = 1; i < srcData.siClassification.length; i++) {
+		   if (srcData.siClassification[i] !== c) {
+		     return false;
+		   }
+		 }
+		 return true;
+	       } else {
+		 return true;
+	       }
+	     },
+	     'fluxDensityDeviation': function(srcData) {
+	       if (typeof srcData.computedFluxDensity !== 'undefined') {
+		 for (var i = 0; i < srcData.computedFluxDensity.length; i++) {
+		   var d = (srcData.computedFluxDensity[i] - srcData.avgFluxDensity) /
+		       srcData.avgFluxDensity;
+		   if ((d * 100) >= parseFloat(pageOptions['fluxDensity-deviation'])) {
+		     return true;
+		   }
+		 }
+		 return false;
+	       } else {
+		 return true;
+	       }
+	     }
+	   };
 	   var showSource = function(src) {
+	     // The actual object for the used evaluations.
+	     var routines = {};
+
+	     var evaluationOptions = { 'compute': false };
+	     if (pageOptions['use-show-nepochs'] === "yes") {
+	       routines.numEpochs = evaluationRoutines.numEpochs;
+	     }
+	     if (pageOptions['use-show-defect'] === "yes") {
+	       routines.defect = evaluationRoutines.defect;
+	     }
+	     if (pageOptions['use-show-closure'] === "yes") {
+	       routines.closurePhase = evaluationRoutines.closurePhase;
+	     }
+	     if (pageOptions['use-show-fluxDensity'] === "yes") {
+	       routines.fluxDensity = evaluationRoutines.fluxDensity;
+	       evaluationOptions.compute = true;
+	     }
+	     if (pageOptions['show-variable-spectralIndex'] === "yes") {
+	       routines.spectralIndex = evaluationRoutines.variableSpectralIndex;
+	       evaluationOptions.compute = true;
+	     }
+	     if (pageOptions['show-constant-spectralIndex'] === "yes") {
+	       routines.spectralIndex = evaluationRoutines.constantSpectralIndex;
+	       evaluationOptions.compute = true;
+	     }
+	     if (pageOptions['use-fluxDensity-deviation'] === "yes") {
+	       routines.fluxDensityDeviation = evaluationRoutines.fluxDensityDeviation;
+	       evaluationOptions.compute = true;
+	     }
+	     
+	     // Now call the routine in our common library that can evaluate everything.
+	     return atese.evaluateConditions(src, routines, evaluationOptions);
 	     // We simply return true for now.
 	     return true;
 	   };
@@ -676,6 +785,20 @@ require( [ "dojo/dom-construct", "dojo/dom", "astrojs/base", "dojo/number", "./a
 	     
 	   };
 
+	   // Ensure that if one of the spectral index classification
+	   // boxes is checked, the other is unchecked.
+	   var oneSI = function(evtObj) {
+	     var other;
+	     if (evtObj.target.id === "selector-variable-si") {
+	       other = "selector-constant-si";
+	     } else if (evtObj.target.id === "selector-constant-si") {
+	       other = "selector-variable-si";
+	     }
+	     domAttr.set(other, 'checked', false);
+	   };
+	   on(dom.byId('selector-variable-si'), 'click', oneSI);
+	   on(dom.byId('selector-constant-si'), 'click', oneSI);
+	   
 	   atese.getFirstSources(pageOptions.firstSource).then(handleSourceList);
 	   
 	 });

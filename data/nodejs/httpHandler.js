@@ -16,33 +16,46 @@ module.exports = function(request, response) {
     console.log(query);
 
     // Figure out the response that we will send back.
-    var data = require('./dataHandler');
-    var dataResponse = data(query);
-    var jsonBack = JSON.stringify(dataResponse);
-
-    if (query.callback) {
-      // We return via JSONP.
-      response.writeHead(200, headers);
-      response.write(query.callback + '(' + jsonBack + ')');
-      response.end();
-    } else {
-      // We return by allow cross-domain queries.
-      
-      // IE8 does not allow domains to be specified, just the *
+    // Do something simple for any OPTIONS request we get.
+    if (request.method === 'OPTIONS') {
+      console.log('!OPTIONS');
       headers["Access-Control-Allow-Origin"] = "*";
-      headers["Access-Control-Allow-Methods"] = "POST, GET, PUT, DELETE, OPTIONS";
+      headers["Access-Control-Allow-Methods"] = "POST, GET, OPTIONS";
       headers["Access-Control-Allow-Credentials"] = false;
       headers["Access-Control-Max-Age"] = '86400'; // 24 hours
       headers["Access-Control-Allow-Headers"] = "X-Requested-With, X-HTTP-Method-Override, Content-Type, Accept";
       response.writeHead(200, headers);
-      response.write(jsonBack);
+      response.end();
+    } else if (request.method === 'POST' || request.method === 'GET') {
+
+      var data = require('./dataHandler');
+      var dataResponse = data(query);
+      var jsonBack = JSON.stringify(dataResponse);
+      
+      if (query.callback) {
+	// We return via JSONP.
+	response.writeHead(200, headers);
+	response.write(query.callback + '(' + jsonBack + ')');
+	response.end();
+      } else {
+	// We return by allow cross-domain queries.
+	
+	// IE8 does not allow domains to be specified, just the *
+	headers["Access-Control-Allow-Origin"] = "*";
+	headers["Access-Control-Allow-Methods"] = "POST, GET, OPTIONS";
+	headers["Access-Control-Allow-Credentials"] = false;
+	headers["Access-Control-Max-Age"] = '86400'; // 24 hours
+	headers["Access-Control-Allow-Headers"] = "X-Requested-With, X-HTTP-Method-Override, Content-Type, Accept";
+	response.writeHead(200, headers);
+	response.write(jsonBack);
+	response.end();
+      }
+    } else {
+      // This is a query that we don't support.
+      
+      response.writeHead(404);
+      response.write("Unknown request made.");
       response.end();
     }
-  } else {
-    // This is a query that we don't support.
-    
-    response.writeHead(404);
-    response.write("Unknown request made.");
-    response.end();
   }
 };

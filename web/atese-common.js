@@ -7,6 +7,7 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate" ],
 	   // Some private variables that we use throughout.
 	   var _sortMethod = "ra"; // By default, we ask for the sources in R.A. order.
 	   var _defaultNumSources = 100; // The number of sources to get from the server at once.
+	   var _lastFrequency, _lastSpectralIndexLowFlat, _lastSpectralIndexHighFlat;
 	   
 	   var _inFlight = false; // Set to true when a Node.js query is made.
 	   // The storage.
@@ -408,6 +409,23 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate" ],
 	   // Compute all the flux densities and spectral indices for a particular
 	   // source at some frequency.
 	   var _computeSource = function(src, frequency, lowFlat, highFlat) {
+	     // Check for the frequency and spectral index options, and fill them if necessary.
+	     if (typeof frequency === 'undefined') {
+	       frequency = _lastFrequency;
+	     } else {
+	       _lastFrequency = frequency;
+	     }
+	     if (typeof lowFlat === 'undefined') {
+	       lowFlat = _lastSpectralIndexLowFlat;
+	     } else {
+	       _lastSpectralIndexLowFlat;
+	     }
+	     if (typeof highFlat === 'undefined') {
+	       highFlat = _lastSpectralIndexHighFlat;
+	     } else {
+	       _lastSpectralIndexHighFlat = highFlat;
+	     }
+	     
 	     if (_sourceStorage.hasOwnProperty(src)) {
 	       // Check if we need to do anything.
 	       if (!_sourceStorage[src].upToDate) {
@@ -629,6 +647,37 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate" ],
 
 	   };
 	   rObj.numberSourcesLoaded = _numberSourcesLoaded;
+
+	   // This method is used to cycle through all the evaluators for
+	   // particular source. Returns true if all the evaluators also return
+	   // true, or false otherwise.
+	   var _evaluateConditions = function(src, routines, options) {
+	     // Our return value;
+	     var r = true;
+
+	     // Make a default options object if necessary.
+	     if (typeof options === 'undefined') {
+	       options = {
+		 'compute': false
+	       };
+	     }
+
+	     if (options.compute) {
+	       // Need to ensure the computed quantities have been made.
+	       _computeSource(src);
+	     }
+	     
+	     for (var e in routines) {
+	       if (routines.hasOwnProperty(e)) {
+		 r = r && routines[e](_sourceStorage[src]);
+		 if (!r) {
+		   return r;
+		 }
+	       }
+	     }
+	     return r;
+	   };
+	   rObj.evaluateConditions = _evaluateConditions;
 	   
 	   // Return our object.
 	   return rObj;
