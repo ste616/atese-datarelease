@@ -34,7 +34,7 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate" ],
 
 	     // Mark the query as started and begin the data request.
 	     _inFlight = true;
-	     var p = xhr(protocol + "//" + hostName + ":8001/datarelease/", {
+	     var p = xhr(protocol + "//" + hostName + ":8080/datarelease/", {
 	       'handleAs': "json",
 	       'query': q
 	     });
