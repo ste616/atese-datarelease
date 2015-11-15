@@ -1,9 +1,20 @@
 // This is the ATESEDR data handling function.
 // Begin by getting doing the things that won't need redoing each time we're called.
 var misc = require('./misc');
+var watchr = require('watchr');
 
 // Load the data release catalogue.
 var dataRelease = require("./datarelease_catalogue.json");
+// Set up a file watcher that will trigger the reload of this file if it
+// gets updated.
+watchr.watch({
+    'paths': [ "./datarelease_catalogue.json" ],
+    'listeners': {
+	'change': function() {
+	    dataRelease = require("./datarelease_catalogue.json");
+	}
+    }
+});
 
 // Sort an array in ascending order and return a list of the sorted
 // indices.
