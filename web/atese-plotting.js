@@ -258,10 +258,20 @@ define( [ "./atese-common.js", "dojox/charting/Chart", "dojox/charting/SimpleThe
 	    
 	    // Get each of the required epochs for this source.
 	    spectraChart.spectraSeries = [];
+	    // Only allow for darkish colours because we're on a white background.
+	    var en = 0;
 	    for (var i = 0; i < nSpectra; i++) {
 	      var n = startIndex + i;
-	      
-	      var tcol = Colour.fromHex(useful.getColour(n));
+	      var nc = n + en;
+
+	      var tcol = Colour.fromHex(useful.getColour(nc));
+              var tbg = useful.foregroundColour(tcol);
+	      while (!tbg.r) {
+		  en += 1;
+		  nc = n + en;
+		  tcol = Colour.fromHex(useful.getColour(nc));
+                  tbg = useful.foregroundColour(tcol);
+	      }
 	      // Add to the legend box.
 	      var leg = domConstruct.create('div', {
 		'innerHTML': atese.getEpochName(src, n)
