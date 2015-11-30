@@ -1,5 +1,5 @@
-define( [ "dojo/request/xhr", "astrojs/skyCoordinate" ],
-	 function(xhr, skyCoord) {
+define( [ "dojo/request/xhr", "astrojs/skyCoordinate", "astrojs/base" ],
+	 function(xhr, skyCoord, astrojs) {
 
 	   // The object we return to our caller.
 	   var rObj = {};
@@ -108,9 +108,16 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate" ],
 		   _sourceStorage[s] = data.data[s];
 		   // Turn the right ascension and declination into a SkyCoord.
 		   var l = data.data[s].rightAscension.length - 1;
-		   var sc = skyCoord.new([
-		     data.data[s].rightAscension[l], data.data[s].declination[l]
-		   ]);
+		   var sc = skyCoord.new({
+		       'ra': {
+			   'value': astrojs.hexa2turns(data.data[s].rightAscension[l], {
+			       'units': "hours"
+			   }),
+			   'units': "turns"
+		       },
+		       'dec': data.data[s].declination[l],
+		       'frame': "J2000"
+		       });
 		   _sourceStorage[s].coordinate = sc;
 		   // Compute the absolute value of the closure phase.
 		   _sourceStorage[s].absClosurePhase =
