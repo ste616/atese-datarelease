@@ -189,6 +189,9 @@ define( [ "./atese-common.js", "dojox/charting/Chart", "dojox/charting/SimpleThe
 		  }
 		} else if (tableCells[j] === "defect") {
 		  cellContents = epochInfo.defect;
+		} else if (tableCells[j] === "solarAngle") {
+		  var sa = number.round(epochInfo.solarAngle.toDegrees(), 1);
+		  cellContents = sa;
 		}
 		domConstruct.create('td', {
 		  'innerHTML': cellContents
