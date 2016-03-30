@@ -76,10 +76,12 @@ require( [ "dojo/dom-construct", "dojo/dom", "astrojs/base", "dojo/number", "./a
 	   atese.setSorting(pageOptions.sorting);
 
 	   // The arrays controlling the layout of the measurement tables.
-	   var headCells = [ "MJD", "Epoch", "RA", "Dec", "Flux Density (Jy/beam)",
-			     "Spectral Index", "Closure Phase (deg)", "Defect (%)" ]
-	   var cellIds = [ 'mjd', 'epoch', 'rightAscension', 'declination',
-			   'fluxDensity', 'spectralIndex', 'closurePhase', 'defect' ];
+	   var headCells = [ "Epoch", "RA", "Dec", "Flux Density (Jy/beam)",
+			     "Spectral Index", "Closure Phase (deg)", "Defect (%)",
+			     "Solar Angle" ]
+	   var cellIds = [ 'epoch', 'rightAscension', 'declination',
+			   'fluxDensity', 'spectralIndex', 'closurePhase', 'defect',
+			   'solarAngle' ];
 
 	   var showDifferentSpectra = function(e) {
 	     // Which element was clicked on?

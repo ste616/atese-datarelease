@@ -1,5 +1,6 @@
-define( [ "dojo/request/xhr", "astrojs/skyCoordinate" ],
-	 function(xhr, skyCoord) {
+define( [ "dojo/request/xhr", "astrojs/skyCoordinate", "astrojs/base", "astrojs/coordinate",
+	  "astrojs/time" ],
+	 function(xhr, skyCoord, astrojs, coord, astroTime) {
 
 	   // The object we return to our caller.
 	   var rObj = {};
@@ -108,13 +109,33 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate" ],
 		   _sourceStorage[s] = data.data[s];
 		   // Turn the right ascension and declination into a SkyCoord.
 		   var l = data.data[s].rightAscension.length - 1;
-		   var sc = skyCoord.new([
-		     data.data[s].rightAscension[l], data.data[s].declination[l]
-		   ]);
+		   var sc = skyCoord.new({
+		       'ra': {
+			   'value': astrojs.hexa2turns(data.data[s].rightAscension[l], {
+			       'units': "hours"
+			   }),
+			   'units': "turns"
+		       },
+		       'dec': data.data[s].declination[l],
+		       'frame': "J2000"
+		       });
 		   _sourceStorage[s].coordinate = sc;
 		   // Compute the absolute value of the closure phase.
 		   _sourceStorage[s].absClosurePhase =
 		     data.data[s].closurePhase.map(Math.abs);
+		   _sourceStorage[s].solarAngle = [];
+		   _sourceStorage[s].solarCoordinate = [];
+		   // Determine where the Sun was on that date.
+		   for (var i = 0; i < _sourceStorage[s].mjd.length; i++) {
+		       var epochTime = astroTime.new({
+			   'location': "ATCA",
+			   'mjd': _sourceStorage[s].mjd[i]
+		       });
+		       var solCoord = skyCoord.new(coord.solarRADec(epochTime));
+		       var solDistance = solCoord.distanceTo(sc);
+		       _sourceStorage[s].solarAngle.push(solDistance);
+		       _sourceStorage[s].solarCoordinate.push(solCoord);
+		   }
 		   // An indicator of whether calculations are up to date.
 		   _sourceStorage[s].upToDate = false;
 		 }
@@ -465,7 +486,8 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate" ],
 		 'defect': _sourceStorage[src].defect[n],
 		 'fluxDensityScatter': _sourceStorage[src].fluxDensityFit[n].fitScatter,
 		 'mjd': _sourceStorage[src].mjd[n],
-		 'rightAscension': _sourceStorage[src].rightAscension[n]
+		 'rightAscension': _sourceStorage[src].rightAscension[n],
+		 'solarAngle': _sourceStorage[src].solarAngle[n]
 	       };
 	     } else {
 	       return undefined;
