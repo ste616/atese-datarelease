@@ -79,7 +79,9 @@ define( [ "./atese-common.js", "dojox/charting/Chart", "dojox/charting/SimpleThe
 		'x': mjd[i],
 		'y': sourceInfo.computedFluxDensity[i]
 	      };
-	      fluxes[sourceInfo.siClassification[i]].push(tflux);
+		if (sourceInfo.fitValid[i]) {
+		    fluxes[sourceInfo.siClassification[i]].push(tflux);
+		}
 	    }
 	    
 	    // Don't do anything if we have no fluxes.

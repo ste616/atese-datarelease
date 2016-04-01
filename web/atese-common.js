@@ -244,6 +244,17 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate", "astrojs/base", "astrojs/
 	     };
 	   };
 
+	     // A helper method to take a JSON object and return a value
+	     // that indicates whether the frequency of the fit would be
+	     // valid for that epoch, but as a function that can be accepted
+	     // by the Array map method.
+	     var _fluxValidAtFrequency = function(freq) {
+		 return function(a) {
+		     return (((freq / 1000.0) >= a.frequencyRange[0]) &&
+			     ((freq / 1000.0) <= a.frequencyRange[1]));
+		 };
+	     };
+
 	   // A helper method to take a spectral index value and return
 	   // the classification dependent on the range accepted as flat, but
 	   // as a function that can be accepted by the Array map method.
@@ -442,6 +453,8 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate", "astrojs/base", "astrojs/
 		   _sourceStorage[src].fluxDensityFit.map(_fluxDensityAtFrequency(frequency));
 		 _sourceStorage[src].computedSpectralIndex =
 		   _sourceStorage[src].fluxDensityFit.map(_spectralIndexAtFrequency(frequency));
+		 _sourceStorage[src].fitValid =
+		       _sourceStorage[src].fluxDensityFit.map(_fluxValidAtFrequency(frequency));
 
 		 // Classify the spectral indices.
 		 _sourceStorage[src].siClassification =
