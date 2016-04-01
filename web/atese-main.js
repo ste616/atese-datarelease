@@ -320,6 +320,22 @@ require( [ "dojo/dom-construct", "dojo/dom", "astrojs/base", "dojo/number", "./a
 	     var mTable = domConstruct.create('table', {
 	       'class': "source-div-measurements-table"
 	     }, tdiv);
+
+	       // Give it a caption for the colour scheme.
+	       var mCaption = domConstruct.create('caption', null, tdiv);
+	       var mCaptionSpan = domConstruct.create('span', {
+		   'class': 'only4cm',
+		   'innerHTML': "White rows have 4cm data only"
+	       }, mCaption);
+	       mCaptionSpan = domConstruct.create('span', {
+		   'class': 'only16cm',
+		   'innerHTML': "Yellow rows have 16cm data only"
+	       }, mCaption);
+	       mCaptionSpan = domConstruct.create('span', {
+		   'class': 'both4and16cm',
+		   'innerHTML': "Blue rows have 4cm and 16cm data"
+	       }, mCaption);
+	       
 	     
 	     // Give it a header.
 	     var mHead = domConstruct.create('thead', null, mTable);

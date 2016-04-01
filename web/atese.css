@@ -48,14 +48,14 @@ input[type=checkbox] {
     height:1px; width:1px; margin:-1px; padding:0; border:0;
 }
 
-tr.only4cm {
+.only4cm {
     background-color: white;
 }
-tr.only16cm {
+.only16cm {
     background-color: yellow;
 }
-tr.both4and16cm {
-    background-color: blue;
+.both4and16cm {
+    background-color: LightSkyBlue;
 }
 
 .source-selection {
