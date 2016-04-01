@@ -48,6 +48,9 @@ input[type=checkbox] {
     height:1px; width:1px; margin:-1px; padding:0; border:0;
 }
 
+.source-div-measurements-table caption span {
+    padding: 0em 1em;
+}
 .only4cm {
     background-color: white;
 }

@@ -322,7 +322,7 @@ require( [ "dojo/dom-construct", "dojo/dom", "astrojs/base", "dojo/number", "./a
 	     }, tdiv);
 
 	       // Give it a caption for the colour scheme.
-	       var mCaption = domConstruct.create('caption', null, tdiv);
+	       var mCaption = domConstruct.create('caption', null, mTable);
 	       var mCaptionSpan = domConstruct.create('span', {
 		   'class': 'only4cm',
 		   'innerHTML': "White rows have 4cm data only"
