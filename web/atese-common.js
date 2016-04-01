@@ -123,19 +123,6 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate", "astrojs/base", "astrojs/
 		   // Compute the absolute value of the closure phase.
 		   _sourceStorage[s].absClosurePhase =
 		     data.data[s].closurePhase.map(Math.abs);
-		   _sourceStorage[s].solarAngle = [];
-		   _sourceStorage[s].solarCoordinate = [];
-		   // Determine where the Sun was on that date.
-		   for (var i = 0; i < _sourceStorage[s].mjd.length; i++) {
-		       var epochTime = astroTime.new({
-			   'location': "ATCA",
-			   'mjd': _sourceStorage[s].mjd[i]
-		       });
-		       var solCoord = skyCoord.new(coord.solarRADec(epochTime));
-		       var solDistance = solCoord.distanceTo(sc);
-		       _sourceStorage[s].solarAngle.push(solDistance);
-		       _sourceStorage[s].solarCoordinate.push(solCoord);
-		   }
 		   // An indicator of whether calculations are up to date.
 		   _sourceStorage[s].upToDate = false;
 		 }
@@ -487,7 +474,7 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate", "astrojs/base", "astrojs/
 		 'fluxDensityScatter': _sourceStorage[src].fluxDensityFit[n].fitScatter,
 		 'mjd': _sourceStorage[src].mjd[n],
 		 'rightAscension': _sourceStorage[src].rightAscension[n],
-		 'solarAngle': _sourceStorage[src].solarAngle[n]
+		 'solarAngle': _sourceStorage[src].solarAngles[n]
 	       };
 	     } else {
 	       return undefined;

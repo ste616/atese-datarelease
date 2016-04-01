@@ -81,7 +81,7 @@ require( [ "dojo/dom-construct", "dojo/dom", "astrojs/base", "dojo/number", "./a
 			     "Solar Angle" ]
 	   var cellIds = [ 'epoch', 'rightAscension', 'declination',
 			   'fluxDensity', 'spectralIndex', 'closurePhase', 'defect',
-			   'solarAngles' ];
+			   'solarAngle' ];
 
 	   var showDifferentSpectra = function(e) {
 	     // Which element was clicked on?
