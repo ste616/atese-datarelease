@@ -474,7 +474,8 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate", "astrojs/base", "astrojs/
 		 'fluxDensityScatter': _sourceStorage[src].fluxDensityFit[n].fitScatter,
 		 'mjd': _sourceStorage[src].mjd[n],
 		 'rightAscension': _sourceStorage[src].rightAscension[n],
-		 'solarAngle': _sourceStorage[src].solarAngles[n]
+		   'solarAngle': _sourceStorage[src].solarAngles[n],
+		   'frequencyRange': _sourceStorage[src].fluxDensityFit[n].frequencyRange
 	       };
 	     } else {
 	       return undefined;

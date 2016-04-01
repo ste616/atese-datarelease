@@ -48,6 +48,16 @@ input[type=checkbox] {
     height:1px; width:1px; margin:-1px; padding:0; border:0;
 }
 
+tr.only4cm {
+    background-color: white;
+}
+tr.only16cm {
+    background-color: yellow;
+}
+tr.both4and16cm {
+    background-color: blue;
+}
+
 .source-selection {
     position: fixed; z-index: 1000; height: 3em; background-color: #6F6;
     left: 20em; right: 1em; line-height: 3em; padding: 0 0.6em;

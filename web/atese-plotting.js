@@ -165,7 +165,21 @@ define( [ "./atese-common.js", "dojox/charting/Chart", "dojox/charting/SimpleThe
 	    var nEpochs = atese.numEpochs(src);
 	    for (var i = 0; i < nEpochs; i++) {
 	      var epochInfo = atese.getEpochInformation(src, i);
-	      var mRow = domConstruct.create('tr', null, mBody);
+		// Check which bands it uses.
+		var rowClass = "only4cm";
+		if (epochInfo.frequencyRange[0] < 4.0) {
+		    // We have 16cm data.
+		    if (epochInfo.frequencyRange[1] < 4.0) {
+			// We have only 16cm data.
+			rowClass = "only16cm";
+		    } else {
+			// We have both bands.
+			rowClass = "both4and16cm";
+		    }
+		}
+		var mRow = domConstruct.create('tr', {
+		    'class': rowClass
+		}, mBody);
 	      for (var j = 0; j < tableCells.length; j++) {
 		var cellContents = null;
 		if (tableCells[j] === "mjd") {
