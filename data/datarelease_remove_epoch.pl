@@ -40,7 +40,7 @@ system "mv $odt $odt.bak";
 
 my @epelems = ( "closurePhase", "declination", "defect", "epochs",
 		"fluxDensity", "fluxDensityFit", "hourAngle", "mjd",
-		"rightAscension" );
+		"rightAscension", "arrayConfigurations", "solarAngles" );
 
 foreach my $s (keys $catalogue) {
     print "Searching source $s\n";

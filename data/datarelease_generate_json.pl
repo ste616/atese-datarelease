@@ -1,5 +1,8 @@
 #!/usr/bin/perl
 
+use lib '/n/ste616/usr/share/perl/5.14.2';
+use Astro::Coord::ECI;
+use Astro::Coord::ECI::Sun;
 use Astro::Time;
 use JSON;
 use Data::Dumper;
@@ -11,6 +14,10 @@ my %station_positions;
 my @configuration_strings;
 my $od = "/DATA/KAPUTAR_4/ste616/data_reduction/C2914/datarelease";
 my $feval = 5.5; # GHz
+
+# ATCA location.
+my ($lat, $lon, $alt) = ( deg2rad(-30.3128846), deg2rad(149.5501388), (236.87 / 1000.0) );
+my $loc = Astro::Coord::ECI->geodetic($lat, $lon, $alt);
 
 # Make a JSON file for each source below this directory,
 # assigning it an epoch name.
@@ -37,6 +44,8 @@ if (!-d $odt) {
 }
 $od = $odt;
 
+my @avg_levels = ( 32, 64, 128 );
+
 my @dirs = &findsources();
 my @sources = &compilesources(@dirs);
 for (my $i = 0; $i <= $#sources; $i++) {
@@ -59,7 +68,9 @@ for (my $i = 0; $i <= $#sources; $i++) {
 	    'fluxDensity' => [],
 	    'defect' => [],
 	    'fluxDensityFit' => [],
-	    'mjd' => []
+	    'mjd' => [],
+	    'solarAngles' => [],
+	    'arrayConfigurations' => []
 	}
     }
     my @p = &getprefixes($sources[$i], @dirs);
@@ -76,14 +87,7 @@ for (my $i = 0; $i <= $#sources; $i++) {
     if ($d == -1) {
 	$d = $#{$catalogue->{$sources[$i]}->{'mjd'}} + 1;
     }
-#    if ($d == -1) {
-#	push @{$catalogue->{$sources[$i]}->{'rightAscension'}}, $jsonref->{'rightAscension'};
-#	push @{$catalogue->{$sources[$i]}->{'declination'}}, $jsonref->{'declination'};
-#	push @{$catalogue->{$sources[$i]}->{'hourAngle'}}, $hamid * 1.0;
-#	push @{$catalogue->{$sources[$i]}->{'closurePhase'}}, $jsonref->{'closurePhase'}->[0]->{'average_value'};
-#	push @{$catalogue->{$sources[$i]}->{'defect'}}, $jsonref->{'defect'}->[0]->{'defect'};
-#	push @{$catalogue->{$sources[$i]}->{'fluxDensity'}}, &coeff2flux($jsonref->{'fluxDensityFits'}->[0]->{'fitCoefficients'}, $feval);
-#    } else {
+
     $catalogue->{$sources[$i]}->{'epochs'}->[$d] = $epname;
     $catalogue->{$sources[$i]}->{'rightAscension'}->[$d] = $jsonref->{'rightAscension'};
     $catalogue->{$sources[$i]}->{'declination'}->[$d] = $jsonref->{'declination'};
@@ -92,9 +96,26 @@ for (my $i = 0; $i <= $#sources; $i++) {
     $catalogue->{$sources[$i]}->{'defect'}->[$d] = $jsonref->{'defect'}->[0]->{'defect'};
     $catalogue->{$sources[$i]}->{'fluxDensity'}->[$d] = &coeff2flux($jsonref->{'fluxDensityFits'}->[0]->{'fitCoefficients'}, $feval);
     $catalogue->{$sources[$i]}->{'mjd'}->[$d] = $mjdmid * 1.0;
+    $catalogue->{$sources[$i]}->{'arrayConfigurations'}->[$d] = $jsonref->{'arrayConfiguration'};
+
+    # Calculate the solar position.
+    my $t = mjd2epoch($mjdmid * 1.0);
+    my $sun = Astro::Coord::ECI::Sun->universal($t);
+    # And the distance between it and our source.
+    my $p = Astro::Coord::ECI->equatorial(
+	str2rad($jsonref->{'rightAscension'}, "H"), str2rad($jsonref->{'declination'}, "D"), 1e12, $t);
+    my $sep = rad2deg(abs($loc->angle($sun, $p)));
+    $catalogue->{$sources[$i]}->{'solarAngles'}->[$d] = $sep;
+
+    my $alphas = &fluxModel2Alphas($jsonref->{'fluxDensityFits'}->[0]->{'fitCoefficients'}, 5.5, 1);
+    unshift @{$alphas}, &coeff2flux($jsonref->{'fluxDensityFits'}->[0]->{'fitCoefficients'}, 5.5);
+
     $catalogue->{$sources[$i]}->{'fluxDensityFit'}->[$d] = {
 	'fitCoefficients' => $jsonref->{'fluxDensityFits'}->[0]->{'fitCoefficients'},
-	'fitScatter' => $jsonref->{'fluxDensityFits'}->[0]->{'fitScatter'}
+	'fitScatter' => $jsonref->{'fluxDensityFits'}->[0]->{'fitScatter'},
+	'alphas5.5' => $alphas,
+	'closest5.5' => [],
+	'frequencyRange' => []
     };
 #    }
 
@@ -102,6 +123,48 @@ for (my $i = 0; $i <= $#sources; $i++) {
     open(OUT, ">".$jsonfile);
     print OUT $json->encode($jsonref);
     close(OUT);
+
+    my $orig_json_text = $json->encode($jsonref);
+
+    # Now do the averaging as well.
+    for (my $av = 0; $av <= $#avg_levels; $av++) {
+	$jsonref = $json->decode($orig_json_text);
+	my $farray = $jsonref->{'fluxDensityData'};
+	for (my $j = 0; $j <= $#{$farray}; $j++) {
+	    my $na = &average_data($farray->[$j]->{'data'}, $avg_levels[$av]);
+	    $farray->[$j]->{'data'} = $na;
+	}
+
+	# Write out the new data.
+	my $avjsonfile = $od."/".$sources[$i]."_".$epname.".averaged".$avg_levels[$av].".json";
+	open(OUT, ">".$avjsonfile);
+	print OUT $json->encode($jsonref);
+	close(OUT);
+
+	# Grab some information if we are at 64 MHz resolution.
+	if ($avg_levels[$av] == 64) {
+	    for (my $j = 0; $j <= $#{$farray}; $j++) {
+		if ($farray->[$j]->{'stokes'} eq "I" &&
+		    $farray->[$j]->{'mode'} eq "vector") {
+		    my $lfd = $#{$farray->[$j]->{'data'}};
+		    $catalogue->{$sources[$i]}->{'fluxDensityFit'}->[$d]->{'frequencyRange'} =
+			[ $farray->[$j]->{'data'}->[0]->[0],
+			  $farray->[$j]->{'data'}->[$lfd]->[0] ];
+		    $catalogue->{$sources[$i]}->{'fluxDensityFit'}->[$d]->{'closest5.5'} =
+			$farray->[$j]->{'data'}->[0];
+		    my $diff1 = $catalogue->{$sources[$i]}->{'fluxDensityFit'}->[$d]->{'closest5.5'}->[0] - 5.5;
+		    for (my $kk = 1; $kk <= $lfd; $kk++) {
+			my $diff2 = $farray->[$j]->{'data'}->[$kk]->[0] - 5.5;
+			if (abs($diff2) < abs($diff1)) {
+			    $diff1 = $diff2;
+			    $catalogue->{$sources[$i]}->{'fluxDensityFit'}->[$d]->{'closest5.5'} =
+				$farray->[$j]->{'data'}->[$kk];
+			}
+		    }
+		}
+	    }
+	}
+    }
 }
 
 open(C, ">".$catname);
@@ -171,6 +234,7 @@ sub jsongen {
     my @stokes = ( 'i' );
     my @orders = ( 3 );
     my @options = ( ",log" );
+
     
     my %ro = (
 	'source' => $src,
@@ -567,4 +631,91 @@ sub measure_closure_phase {
     }
 
     return %rv;
+}
+
+sub fluxModel2Alphas {
+    my $model = shift;
+    my $referenceFreq = shift;
+    my $basee = shift;
+
+    my $isLog = ($model->[$#{$model}] eq "log");
+    if (!$isLog) {
+	return [];
+    }
+    my $f = $referenceFreq;
+    my $a = ($#{$model} >= 2) ? $model->[1] : 0;
+    my $b = ($#{$model} >= 3) ? $model->[2] : 0;
+    my $c = ($#{$model} == 4) ? $model->[3] : 0;
+    my $alphas = [];
+    if ($#{$model} >= 2) {
+	push @{$alphas}, $a;
+	if ($#{$model} >= 3) {
+	    my $a2 = $b;
+	    if ($basee) {
+		$a2 *= log(exp(1)) / log(10.0);
+	    }
+	    $alphas->[0] += (($basee) ? log($f) : log($f) / log(10.0)) * 2 * $a2;
+	    push @{$alphas}, $a2;
+	    if ($#{$model} == 4) {
+		my $a3 = $c;
+		if ($basee) {
+		    $a3 *= (log(exp(1)) / log(10.0)) ** 2;
+		}
+		$alphas->[0] += (($basee) ? (log($f) ** 2) : (log($f) / log(10.0)) ** 2) * 3 * $a3;
+		$alphas->[1] += (($basee) ? log($f) : log($f) / log(10.0)) * 3 * $a3;
+		push @{$alphas}, $a3;
+	    }
+	}
+    }
+    return $alphas;
+}
+
+sub average_data {
+    my $aref = shift;
+    my $avg = shift;
+
+    # Change the average to GHz from MHz.
+    $avg /= 1000;
+
+    # The new array.
+    my @narr;
+
+    my @f;
+    my @a;
+    my $s = 0;
+    for (my $i = 0; $i <= $#{$aref}; $i++) {
+	my $tf = $aref->[$i]->[0];
+	my $ta = $aref->[$i]->[1];
+	if (($s == 1) &&
+	    ($tf < ($f[0] + $avg))) {
+	    push @f, $tf;
+	    push @a, $ta;
+	} elsif ($s == 1) {
+	    my $avf = &avgarr(\@f);
+	    my $ava = &avgarr(\@a);
+	    push @narr, [ $avf, $ava ];
+	    $s = 0;
+	}
+	if ($s == 0) {
+	    @f = ( $tf );
+	    @a = ( $ta );
+	    $s = 1;
+	}
+    }
+
+    return \@narr;
+}
+
+sub avgarr {
+    my $aref = shift;
+
+    my $s = $aref->[0];
+    my $n = 1;
+
+    for (my $i = 1; $i <= $#{$aref}; $i++) {
+	$s += $aref->[$i];
+	$n++;
+    }
+
+    return ($s / $n);
 }
