@@ -255,6 +255,15 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate", "astrojs/base", "astrojs/
 		 };
 	     };
 
+	     // A helper method to filter flux densities based on their
+	     // frequency validity, but as a function that can be accepted
+	     // by the Array filter method.
+	     var _fluxValidFilter = function(validArr) {
+		 return function(a, idx) {
+		     return validArr[idx];
+		 };
+	     };
+
 	   // A helper method to take a spectral index value and return
 	   // the classification dependent on the range accepted as flat, but
 	   // as a function that can be accepted by the Array map method.
@@ -463,9 +472,14 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate", "astrojs/base", "astrojs/
 
 		 // Compute the average and maximum flux densities.
 		 _sourceStorage[src].maxFluxDensity =
-		   Math.max.apply(this, _sourceStorage[src].computedFluxDensity);
+		   Math.max.apply(this,
+				  _sourceStorage[src].computedFluxDensity.filter(
+				      _fluxValidFilter(_sourceStorage[src].fitValid)
+				  ));
 		 _sourceStorage[src].avgFluxDensity =
- 		   _arrayAverage(_sourceStorage[src].computedFluxDensity);
+ 		       _arrayAverage(_sourceStorage[src].computedFluxDensity.filter(
+			   _fluxValidFilter(_sourceStorage[src].fitValid)
+		       ));
 		 
 		 // Mark it as computed now.
 		 _sourceStorage[src].upToDate = true;
