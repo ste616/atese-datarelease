@@ -417,7 +417,8 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate", "astrojs/base", "astrojs/
 		 'computedSpectralIndex': _sourceStorage[src].computedSpectralIndex,
 		 'siClassification': _sourceStorage[src].siClassification,
 		 'maxFluxDensity': _sourceStorage[src].maxFluxDensity,
-		 'avgFluxDensity': _sourceStorage[src].avgFluxDensity
+		   'avgFluxDensity': _sourceStorage[src].avgFluxDensity,
+		   'fitValid': _sourceStorage[src].fitValid
 	       };
 	     } else {
 	       return undefined;
