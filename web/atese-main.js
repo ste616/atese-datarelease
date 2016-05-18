@@ -237,6 +237,11 @@ require( [ "dojo/dom-construct", "dojo/dom", "astrojs/base", "dojo/number", "./a
 	     return true;
 	   };
 
+	   var updateSelectedList = function() {
+	     var selectedSources = atese.selectedSources();
+	     domAttr.set("sources-selected-number", "innerHTML", selectedSources.length);
+	   };
+	   
 	   var toggleSourceSelection = function(src) {
 	     var pageElement = atese.getSourceProperty(src, "pageElement");
 	     if (atese.toggleSourceSelection(src)) {
@@ -244,6 +249,7 @@ require( [ "dojo/dom-construct", "dojo/dom", "astrojs/base", "dojo/number", "./a
 	     } else {
 	       domClass.remove(pageElement, "source-div-selected");
 	     }
+	     updateSelectedList();
 	   };
 
 	   var toggleSourceSelectionGenerator = function(src) {
@@ -252,7 +258,7 @@ require( [ "dojo/dom-construct", "dojo/dom", "astrojs/base", "dojo/number", "./a
 	     };
 	     return r;
 	   };
-	   
+
 	   var makeSourcePanel = function(src) {
 	     // Check that we haven't made the panel before now.
 	     if (atese.getSourceProperty(src, "pageElement")) {

@@ -145,6 +145,18 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate", "astrojs/base", "astrojs/
 	     return false;
 	   };
 	   rObj.toggleSourceSelection = _toggle_source_selection;
+
+	   // Method that returns a list of all the selected sources.
+	   var _selected_sources = function() {
+	     var srclist = [];
+	     for (var src in _sourceSelections) {
+	       if (_sourceSelections[src]) {
+		 srclist.push(src);
+	       }
+	     }
+	     return srclist;
+	   };
+	   rObj.selectedSources = _selected_sources;
 	   
 	   // Method to go through a list of sources coming from the Node.js server
 	   // and do some useful things.
