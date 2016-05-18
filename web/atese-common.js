@@ -117,7 +117,7 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate", "astrojs/base", "astrojs/
 
 	   // Method that sets the source selection.
 	   var _set_source_selection = function(src, state) {
-	     if (src in sourceSelections &&
+	     if (src in _sourceSelections &&
 		 (state === true || state === false)) {
 	       _sourceSelections[src] = state;
 	     }
@@ -138,7 +138,7 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate", "astrojs/base", "astrojs/
 
 	   // Method that toggles the source selection.
 	   var _toggle_source_selection = function(src) {
-	     if (src in sourceSelections) {
+	     if (src in _sourceSelections) {
 	       _sourceSelections[src] = !_sourceSelections[src];
 	       return _sourceSelections[src];
 	     }
