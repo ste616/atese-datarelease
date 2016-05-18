@@ -654,7 +654,8 @@ require( [ "dojo/dom-construct", "dojo/dom", "astrojs/base", "dojo/number", "./a
 	       }
 	     }
 	     domAttr.set("nsources-shown", "innerHTML", numberSourcesShown);
-	     
+	     updateSelectedList();
+
 	     // Scroll back to a reference node if necessary.
 	     if (scrollReference !== null) {
 	       var nPosition = domGeom.position(scrollReference);
@@ -742,6 +743,7 @@ require( [ "dojo/dom-construct", "dojo/dom", "astrojs/base", "dojo/number", "./a
 	     // the rendering function.
 	     when(atese.getSourceList(), pageRender);
 
+	     
 	   };
 	   scrollTimer.onTick = pageChange;
 
