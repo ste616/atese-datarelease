@@ -15,6 +15,7 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate", "astrojs/base", "astrojs/
 	   var _sourceStorage = {};
 	   var _sourceLists = {};
 	   var _sourceKeys = {};
+	   var _sourceSelections = {};
 	   // Indicators for the range of sources we currently have.
 	   var _sourceIndices = {};
 
@@ -88,7 +89,13 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate", "astrojs/base", "astrojs/
 		 _sourceKeys[_sortMethod] = {};
 		 for (var i = 0; i < _sourceLists[_sortMethod].length; i++) {
 		   _sourceKeys[_sortMethod][_sourceLists[_sortMethod][i]] = i;
+		   // Add flags for selections.
+		   if (!(_sourceLists[_sortMethod][i] in _sourceSelections)) {
+		     _sourceSelections[_sourceLists[_sortMethod][i]] = false;
+		   }
 		 }
+
+
 	       }
 
 	       // Index the sources.
@@ -97,6 +104,47 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate", "astrojs/base", "astrojs/
 	       return data;
 	     });
 	   };
+
+	   // Method that returns if a source is selected.
+	   var _get_source_selection = function(src) {
+	     if (!(src in _sourceSelections)) {
+	       // The source isn't in our list.
+	       return false;
+	     }
+	     return _sourceSelections[src];
+	   };
+	   rObj.sourceSelected = _get_source_selection;
+
+	   // Method that sets the source selection.
+	   var _set_source_selection = function(src, state) {
+	     if (src in sourceSelections &&
+		 (state === true || state === false)) {
+	       _sourceSelections[src] = state;
+	     }
+	   };
+	   rObj.setSourceSelection = _set_source_selection;
+	   
+	   // Method that de-selects a source.
+	   var _deselect_source = function(src) {
+	     _set_source_selection(src, false);
+	   };
+	   rObj.deselectSource = _deselect_source;
+
+	   // Method that selects a source.
+	   var _select_source = function(src) {
+	     _set_source_selection(src, false);
+	   };
+	   rObj.selectSource = _select_source;
+
+	   // Method that toggles the source selection.
+	   var _toggle_source_selection = function(src) {
+	     if (src in sourceSelections) {
+	       _sourceSelections[src] = !_sourceSelections[src];
+	       return _sourceSelections[src];
+	     }
+	     return false;
+	   };
+	   rObj.toggleSourceSelection = _toggle_source_selection;
 	   
 	   // Method to go through a list of sources coming from the Node.js server
 	   // and do some useful things.
@@ -136,7 +184,7 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate", "astrojs/base", "astrojs/
 	       return;
 	     }
 	   };
-	   
+
 	   // Method to get a set of sources.
 	   var _getSources = function(src, nsrc, includeSource) {
 	     // The query object.
@@ -426,8 +474,8 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate", "astrojs/base", "astrojs/
 		 'computedSpectralIndex': _sourceStorage[src].computedSpectralIndex,
 		 'siClassification': _sourceStorage[src].siClassification,
 		 'maxFluxDensity': _sourceStorage[src].maxFluxDensity,
-		   'avgFluxDensity': _sourceStorage[src].avgFluxDensity,
-		   'fitValid': _sourceStorage[src].fitValid
+		 'avgFluxDensity': _sourceStorage[src].avgFluxDensity,
+		 'fitValid': _sourceStorage[src].fitValid
 	       };
 	     } else {
 	       return undefined;
@@ -502,8 +550,8 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate", "astrojs/base", "astrojs/
 		 'fluxDensityScatter': _sourceStorage[src].fluxDensityFit[n].fitScatter,
 		 'mjd': _sourceStorage[src].mjd[n],
 		 'rightAscension': _sourceStorage[src].rightAscension[n],
-		   'solarAngle': _sourceStorage[src].solarAngles[n],
-		   'frequencyRange': _sourceStorage[src].fluxDensityFit[n].frequencyRange
+		 'solarAngle': _sourceStorage[src].solarAngles[n],
+		 'frequencyRange': _sourceStorage[src].fluxDensityFit[n].frequencyRange
 	       };
 	     } else {
 	       return undefined;

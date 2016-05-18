@@ -16,6 +16,7 @@ h3 { font-weight: bold; font-size: 1.1em; margin: 0.2em; }
 .source-div-measurements-table > tbody td {
     font-family: 'Cousine', monospace; font-size: 0.8em; border: 1px solid #333;
     padding: 0.3em; text-align: left; }
+.source-div-selected { background-color: #98fb98; }
 
 #catalogue-loading {
     position: fixed; z-index: 1000; height: 3em; background-color: yellow; left: 20em; right: 1em;
