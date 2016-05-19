@@ -132,7 +132,7 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate", "astrojs/base", "astrojs/
 
 	   // Method that selects a source.
 	   var _select_source = function(src) {
-	     _set_source_selection(src, false);
+	     _set_source_selection(src, true);
 	   };
 	   rObj.selectSource = _select_source;
 
