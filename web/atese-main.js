@@ -259,6 +259,40 @@ require( [ "dojo/dom-construct", "dojo/dom", "astrojs/base", "dojo/number", "./a
 	     return r;
 	   };
 
+	   // The routine that can do selections on all sources.
+	   var allSourceSelections = function(mode) {
+	     when(atese.getSourceList(), function(sourceList) {
+	       for (var i = 0; i < sourceList.length; i++) {
+		 if (mode === 'select') {
+		   atese.selectSource(sourceList[i]);
+		 } else if (mode === 'deselect') {
+		   atese.deselectSource(sourceList[i]);
+		 } else if (mode === 'toggle') {
+		   atese.toggleSourceSelection(sourceList[i]);
+		 }
+	       }
+	       pageRender(sourceList);
+	     });
+	   };
+	   
+	   // Routine that selects all the sources.
+	   var selectAllSources = function() {
+	     allSourceSelections("select");
+	   };
+	   on(dom.byId("source-selection-select-all"), "click", selectAllSources);
+
+	   // Routine that deselects all the sources.
+	   var deselectAllSources = function() {
+	     allSourceSelections("deselect");
+	   };
+	   on(dom.byId("source-selection-select-none"), "click", deselectAllSources);
+
+	   // Routine that toggles the selection on all the sources.
+	   var toggleSelectAllSources = function() {
+	     allSourceSelections("toggle");
+	   };
+	   on(dom.byId("source-selection-select-invert"), "click", toggleSelectAllSources);
+	   
 	   var makeSourcePanel = function(src) {
 	     // Check that we haven't made the panel before now.
 	     if (atese.getSourceProperty(src, "pageElement")) {
