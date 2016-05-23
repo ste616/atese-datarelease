@@ -15,8 +15,9 @@ my %input = $in->Vars;
 # The base directory to find the data in.
 my $od = "/var/www/astrowebservices.com/public_html/C2914/datarelease/datarelease";
 
-# The list of sources should be a JSON array in the parameter "sources".
-my $sources = from_json $input{"sources"};
+# The list of sources should be a comma-separated list in the parameter "sources".
+$input{"sources"} =~ s/\s//g;
+my @sources = split(/\,/, $input{"sources"});
 
 my $mode = "json";
 # We can output Mark-formatted data if the user passes the option "mwformat" as "mode".
@@ -39,20 +40,20 @@ if (-e $catname) {
 
 my $outh = {};
 
-for (my $i = 0; $i <= $#{$sources}; $i++) {
-    if (exists $catalogue->{$sources->[$i]}) {
-	$outh->{$sources->[$i]} = $catalogue->{$sources->[$i]};
-	$outh->{$sources->[$i]}->{'data'} = [];
+for (my $i = 0; $i <= $#sources; $i++) {
+    if (exists $catalogue->{$sources[$i]}) {
+	$outh->{$sources[$i]} = $catalogue->{$sources[$i]};
+	$outh->{$sources[$i]}->{'data'} = [];
 	# Grab the full data.
-	for (my $j = 0; $j <= $#{$catalogue->{$sources->[$i]}->{'epochs'}}; $j++) {
-	    my $ename = $catalogue->{$sources->[$i]}->{'epochs'}->[$j];
+	for (my $j = 0; $j <= $#{$catalogue->{$sources[$i]}->{'epochs'}}; $j++) {
+	    my $ename = $catalogue->{$sources[$i]}->{'epochs'}->[$j];
 #	    print "  epoch ".$ename."\n";
-	    my $efile = $od."/".$ename."/".$sources->[$i]."_".$ename.".json";
+	    my $efile = $od."/".$ename."/".$sources[$i]."_".$ename.".json";
 	    if (-e $efile) {
 		open(D, $efile);
 		my $datxt = <D>;
 		close(D);
-		push @{$outh->{$sources->[$i]}->{'data'}}, from_json $datxt;
+		push @{$outh->{$sources[$i]}->{'data'}}, from_json $datxt;
 	    }
 	}
     }
@@ -71,9 +72,9 @@ if ($mode eq "json") {
     # We have to make a single tar file full of all the individual
     # source txt files.
     system "mkdir ".$outbase."/".$outfile;
-    for (my $i = 0; $i <= $#{$sources}; $i++) {
-	my $mref = $outh->{$sources->[$i]};
-	my $tfile = $sources->[$i].".mwformat.txt";
+    for (my $i = 0; $i <= $#sources; $i++) {
+	my $mref = $outh->{$sources[$i]};
+	my $tfile = $sources[$i].".mwformat.txt";
 	open(T, ">".$outbase."/".$outfile."/".$tfile);
 	for (my $j = 0; $j <= $#{$mref->{'mjd'}}; $j++) {
 	    my @a4;

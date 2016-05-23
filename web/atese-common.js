@@ -45,6 +45,12 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate", "astrojs/base", "astrojs/
 	     return p;
 	   };
 
+	   // The routine that handles communications with the data-grabbing
+	   // CGI script.
+	   var _comms_cgi = function(q) {
+	     
+	   };
+	   
 	   // Go through the source storage and determine the range of sources
 	   // in the source list that we actually have.
 	   var _indexSources = function() {
