@@ -240,6 +240,17 @@ require( [ "dojo/dom-construct", "dojo/dom", "astrojs/base", "dojo/number", "./a
 	   var updateSelectedList = function() {
 	     var selectedSources = atese.selectedSources();
 	     domAttr.set("sources-selected-number", "innerHTML", selectedSources.length);
+
+	     // Enable or disable the buttons as required.
+	     if (selectedSources.length === 0) {
+	       // Disable both the buttons.
+	       dom.byId("button-source-json-download").disabled = "disabled";
+	       dom.byId("button-source-mwf-download").disabled = "disabled";
+	     } else {
+	       // Enable both the buttons.
+	       dom.byId("button-source-json-download").disabled = "";
+	       dom.byId("button-source-mwf-download").disabled = "";
+	     }
 	   };
 	   
 	   var toggleSourceSelection = function(src) {
