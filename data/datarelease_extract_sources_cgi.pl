@@ -41,8 +41,8 @@ my $outh = {};
 
 for (my $i = 0; $i <= $#{$sources}; $i++) {
     if (exists $catalogue->{$sources->[$i]}) {
-	$outh->{$sources[$i]} = $catalogue->{$sources->[$i]};
-	$outh->{$sources[$i]}->{'data'} = [];
+	$outh->{$sources->[$i]} = $catalogue->{$sources->[$i]};
+	$outh->{$sources->[$i]}->{'data'} = [];
 	# Grab the full data.
 	for (my $j = 0; $j <= $#{$catalogue->{$sources->[$i]}->{'epochs'}}; $j++) {
 	    my $ename = $catalogue->{$sources->[$i]}->{'epochs'}->[$j];
