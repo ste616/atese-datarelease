@@ -84,9 +84,9 @@ if ($mode eq "json") {
 	    my @tmjd = mjd2cal($mref->{'mjd'}->[$j]);
 	    my $ts = sprintf "%4d-%02d-%02d %s", $tmjd[2], $tmjd[1], $tmjd[0], turn2str($tmjd[3], "H", 0, ":");
 	    my $dref = $mref->{'data'}->[$j];
-	    for (my $k = 0; $k <= $#{$mref->{'fluxDensityData'}}; $k++) {
-		if ($mref->{'fluxDensityData'}->[$k]->{'stokes'} eq "I") {
-		    my $fref = $mref->{'fluxDensityData'}->[$k];
+	    for (my $k = 0; $k <= $#{$dref->{'fluxDensityData'}}; $k++) {
+		if ($dref->{'fluxDensityData'}->[$k]->{'stokes'} eq "I") {
+		    my $fref = $dref->{'fluxDensityData'}->[$k];
 		    for (my $l = 0; $l <= $#{$fref->{'data'}}; $l++) {
 			if ($fref->{'data'}->[$l]->[0] > 3.5) {
 			    push @a4, $fref->{'data'}->[$l]->[1];
