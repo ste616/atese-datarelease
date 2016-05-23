@@ -106,58 +106,6 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate", "astrojs/base", "astrojs/
 	     });
 	   };
 
-	   // Method that returns if a source is selected.
-	   var _get_source_selection = function(src) {
-	     if (!(src in _sourceSelections)) {
-	       // The source isn't in our list.
-	       return false;
-	     }
-	     return _sourceSelections[src];
-	   };
-	   rObj.sourceSelected = _get_source_selection;
-
-	   // Method that sets the source selection.
-	   var _set_source_selection = function(src, state) {
-	     if (src in _sourceSelections &&
-		 (state === true || state === false)) {
-	       _sourceSelections[src] = state;
-	     }
-	   };
-	   rObj.setSourceSelection = _set_source_selection;
-	   
-	   // Method that de-selects a source.
-	   var _deselect_source = function(src) {
-	     _set_source_selection(src, false);
-	   };
-	   rObj.deselectSource = _deselect_source;
-
-	   // Method that selects a source.
-	   var _select_source = function(src) {
-	     _set_source_selection(src, true);
-	   };
-	   rObj.selectSource = _select_source;
-
-	   // Method that toggles the source selection.
-	   var _toggle_source_selection = function(src) {
-	     if (src in _sourceSelections) {
-	       _sourceSelections[src] = !_sourceSelections[src];
-	       return _sourceSelections[src];
-	     }
-	     return false;
-	   };
-	   rObj.toggleSourceSelection = _toggle_source_selection;
-
-	   // Method that returns a list of all the selected sources.
-	   var _selected_sources = function() {
-	     var srclist = [];
-	     for (var src in _sourceSelections) {
-	       if (_sourceSelections[src]) {
-		 srclist.push(src);
-	       }
-	     }
-	     return srclist;
-	   };
-	   rObj.selectedSources = _selected_sources;
 	   
 	   // Method to go through a list of sources coming from the Node.js server
 	   // and do some useful things.
@@ -777,7 +725,60 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate", "astrojs/base", "astrojs/
 	     return r;
 	   };
 	   rObj.evaluateConditions = _evaluateConditions;
+
+	   // Method that returns if a source is selected.
+	   var _get_source_selection = function(src) {
+	     if (!(src in _sourceSelections)) {
+	       // The source isn't in our list.
+	       return false;
+	     }
+	     return _sourceSelections[src];
+	   };
+	   rObj.sourceSelected = _get_source_selection;
+
+	   // Method that sets the source selection.
+	   var _set_source_selection = function(src, state) {
+	     if (src in _sourceSelections &&
+		 (state === true || state === false)) {
+	       _sourceSelections[src] = state;
+	     }
+	   };
+	   rObj.setSourceSelection = _set_source_selection;
 	   
+	   // Method that de-selects a source.
+	   var _deselect_source = function(src) {
+	     _set_source_selection(src, false);
+	   };
+	   rObj.deselectSource = _deselect_source;
+
+	   // Method that selects a source.
+	   var _select_source = function(src) {
+	     _set_source_selection(src, true);
+	   };
+	   rObj.selectSource = _select_source;
+
+	   // Method that toggles the source selection.
+	   var _toggle_source_selection = function(src) {
+	     if (src in _sourceSelections) {
+	       _sourceSelections[src] = !_sourceSelections[src];
+	       return _sourceSelections[src];
+	     }
+	     return false;
+	   };
+	   rObj.toggleSourceSelection = _toggle_source_selection;
+
+	   // Method that returns a list of all the selected sources.
+	   var _selected_sources = function() {
+	     var srclist = [];
+	     for (var src in _sourceSelections) {
+	       if (_sourceSelections[src]) {
+		 srclist.push(src);
+	       }
+	     }
+	     return srclist;
+	   };
+	   rObj.selectedSources = _selected_sources;
+
 	   // Return our object.
 	   return rObj;
 	   

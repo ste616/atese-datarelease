@@ -896,6 +896,32 @@ require( [ "dojo/dom-construct", "dojo/dom", "astrojs/base", "dojo/number", "./a
 	   };
 	   on(dom.byId('selector-variable-si'), 'click', oneSI);
 	   on(dom.byId('selector-constant-si'), 'click', oneSI);
+
+	   // Handler for getting data packages from the server.
+	   var dataDownloader = function(mode) {
+	     // Get the list of selected sources.
+	     var selectedSources = atese.selectedSources();
+	     // Continue only if we have some selected sources.
+	     if (selectedSources.length == 0) {
+	       return;
+	     }
+	     // Craft the destination.
+	     var tgt = location.protocol + "//" +
+		 location.hostname + "/cgi-bin/datarelease_extract_sources_cgi.pl" +
+		 "?sources=" + selectedSources.join(",");
+	     if (mode === "mwf") {
+	       tgt += "&mode=mwformat";
+	     }
+	     location.href = tgt;
+	   };
+
+	   // The buttons.
+	   on(dom.byId("button-source-json-download"), "click", function() {
+	     dataDownloader("json");
+	   });
+	   on(dom.byId("button-source-mwf-download"), "click", function() {
+	     dataDownloader("mwf");
+	   });
 	   
 	   atese.getFirstSources(pageOptions.firstSource).then(handleSourceList);
 	   
