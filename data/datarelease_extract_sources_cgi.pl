@@ -121,7 +121,9 @@ if ($mode eq "json") {
 }
 
 # Return this file to the user.
-print $in->header( -type => 'application/octet-stream' );
+print $in->header(
+    -type => 'application/octet-stream',
+    -attachment => $outfile );
 open( my $b, $outbase."/".$outfile );
 binmode($b);
 binmode(STDOUT);
