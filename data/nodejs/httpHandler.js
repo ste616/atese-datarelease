@@ -10,6 +10,7 @@ module.exports = function(request, response) {
     "content-type": "application/json",
     "charset": "utf-8"
   };
+	console.log(request.url);
 
   if (/^\/datarelease\//.test(path)) {
     // The request is for some data from the ATESE data release.
@@ -27,6 +28,7 @@ module.exports = function(request, response) {
       response.writeHead(200, headers);
       response.end();
     } else if (request.method === 'POST' || request.method === 'GET') {
+	console.log(request.method);
 
       var data = require('./dataHandler');
       var dataResponse = data(query);
