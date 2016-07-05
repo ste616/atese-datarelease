@@ -42,6 +42,9 @@ require( [ "dojo/dom-construct", "dojo/dom", "astrojs/base", "dojo/number", "./a
 	   // And set our plotter to use these.
 	   atesePlot.setIdGenerator(idMethods);
 
+	   // An object to keep track of old source selections.
+	   var oldSelections = {};
+	   
 	   // Get the options set by our form on the page.
 	   var pageOptions = domForm.toObject("showForm");
 	   // Add to it the hidden default options.
@@ -233,6 +236,73 @@ require( [ "dojo/dom-construct", "dojo/dom", "astrojs/base", "dojo/number", "./a
 	     // We simply return true for now.
 	     return true;
 	   };
+
+	   var updateSelectedList = function() {
+	     var selectedSources = atese.selectedSources();
+	     domAttr.set("sources-selected-number", "innerHTML", selectedSources.length);
+
+	     // Enable or disable the buttons as required.
+	     if (selectedSources.length === 0) {
+	       // Disable both the buttons.
+	       dom.byId("button-source-json-download").disabled = "disabled";
+	       dom.byId("button-source-mwf-download").disabled = "disabled";
+	     } else {
+	       // Enable both the buttons.
+	       dom.byId("button-source-json-download").disabled = "";
+	       dom.byId("button-source-mwf-download").disabled = "";
+	     }
+	   };
+	   
+	   var toggleSourceSelection = function(src) {
+	     var pageElement = atese.getSourceProperty(src, "pageElement");
+	     if (atese.toggleSourceSelection(src)) {
+	       domClass.add(pageElement, "source-div-selected");
+	     } else {
+	       domClass.remove(pageElement, "source-div-selected");
+	     }
+	     updateSelectedList();
+	   };
+
+	   var toggleSourceSelectionGenerator = function(src) {
+	     var r = function() {
+	       toggleSourceSelection(src);
+	     };
+	     return r;
+	   };
+
+	   // The routine that can do selections on all sources.
+	   var allSourceSelections = function(mode) {
+	     when(atese.getSourceList(), function(sourceList) {
+	       for (var i = 0; i < sourceList.length; i++) {
+		 if (mode === 'select') {
+		   atese.selectSource(sourceList[i]);
+		 } else if (mode === 'deselect') {
+		   atese.deselectSource(sourceList[i]);
+		 } else if (mode === 'toggle') {
+		   atese.toggleSourceSelection(sourceList[i]);
+		 }
+	       }
+	       pageRender(sourceList);
+	     });
+	   };
+	   
+	   // Routine that selects all the sources.
+	   var selectAllSources = function() {
+	     allSourceSelections("select");
+	   };
+	   on(dom.byId("source-selection-select-all"), "click", selectAllSources);
+
+	   // Routine that deselects all the sources.
+	   var deselectAllSources = function() {
+	     allSourceSelections("deselect");
+	   };
+	   on(dom.byId("source-selection-select-none"), "click", deselectAllSources);
+
+	   // Routine that toggles the selection on all the sources.
+	   var toggleSelectAllSources = function() {
+	     allSourceSelections("toggle");
+	   };
+	   on(dom.byId("source-selection-select-invert"), "click", toggleSelectAllSources);
 	   
 	   var makeSourcePanel = function(src) {
 	     // Check that we haven't made the panel before now.
@@ -274,6 +344,7 @@ require( [ "dojo/dom-construct", "dojo/dom", "astrojs/base", "dojo/number", "./a
 	       'innerHTML': "select",
 	       'id': "source-title-selector-" + src
 	     }, stitle);
+	     on(titleSelector, 'click', toggleSourceSelectionGenerator(src));
 
 	     // Prepare areas for the data.
 	     var phdiv = domConstruct.create('div', {
@@ -516,11 +587,29 @@ require( [ "dojo/dom-construct", "dojo/dom", "astrojs/base", "dojo/number", "./a
 		 if (!showSource(sourceList[i])) {
 		   // Hide the DOM element.
 		   domClass.add(pageElement, "hidden");
+		   // De-select this source.
+		   if (!(sourceList[i] in oldSelections)) {
+		     oldSelections[sourceList[i]] = atese.sourceSelected(sourceList[i]);
+		     atese.deselectSource(sourceList[i]);
+		   }
 		 } else {
 		   // Show the DOM element.
 		   domClass.remove(pageElement, "hidden");
 		   numberSourcesShown++;
+		   // Reselect this source the way it was before.
+		   if (sourceList[i] in oldSelections) {
+		     atese.setSourceSelection(sourceList[i], oldSelections[sourceList[i]]);
+		     // Remove it from the old list.
+		     delete oldSelections[sourceList[i]];
+		   }
 
+		   // Set a class based on the selection.
+		   if (atese.sourceSelected(sourceList[i])) {
+		     domClass.add(pageElement, "source-div-selected");
+		   } else {
+		     domClass.remove(pageElement, "source-div-selected");
+		   }
+		   
 		   // And check for its position.
 		   if (isInViewport(pageElement)) {
 		     // Make sure all the quantities are up to date.
@@ -610,7 +699,8 @@ require( [ "dojo/dom-construct", "dojo/dom", "astrojs/base", "dojo/number", "./a
 	       }
 	     }
 	     domAttr.set("nsources-shown", "innerHTML", numberSourcesShown);
-	     
+	     updateSelectedList();
+
 	     // Scroll back to a reference node if necessary.
 	     if (scrollReference !== null) {
 	       var nPosition = domGeom.position(scrollReference);
@@ -698,6 +788,7 @@ require( [ "dojo/dom-construct", "dojo/dom", "astrojs/base", "dojo/number", "./a
 	     // the rendering function.
 	     when(atese.getSourceList(), pageRender);
 
+	     
 	   };
 	   scrollTimer.onTick = pageChange;
 
@@ -816,6 +907,32 @@ require( [ "dojo/dom-construct", "dojo/dom", "astrojs/base", "dojo/number", "./a
 	   };
 	   on(dom.byId('selector-variable-si'), 'click', oneSI);
 	   on(dom.byId('selector-constant-si'), 'click', oneSI);
+
+	   // Handler for getting data packages from the server.
+	   var dataDownloader = function(mode) {
+	     // Get the list of selected sources.
+	     var selectedSources = atese.selectedSources();
+	     // Continue only if we have some selected sources.
+	     if (selectedSources.length == 0) {
+	       return;
+	     }
+	     // Craft the destination.
+	     var tgt = location.protocol + "//" +
+		 location.hostname + "/cgi-bin/datarelease_extract_sources_cgi.pl" +
+		 "?sources=" + selectedSources.join(",");
+	     if (mode === "mwf") {
+	       tgt += "&mode=mwformat";
+	     }
+	     location.href = tgt;
+	   };
+
+	   // The buttons.
+	   on(dom.byId("button-source-json-download"), "click", function() {
+	     dataDownloader("json");
+	   });
+	   on(dom.byId("button-source-mwf-download"), "click", function() {
+	     dataDownloader("mwf");
+	   });
 	   
 	   atese.getFirstSources(pageOptions.firstSource).then(handleSourceList);
 	   

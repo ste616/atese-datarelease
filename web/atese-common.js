@@ -15,6 +15,7 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate", "astrojs/base", "astrojs/
 	   var _sourceStorage = {};
 	   var _sourceLists = {};
 	   var _sourceKeys = {};
+	   var _sourceSelections = {};
 	   // Indicators for the range of sources we currently have.
 	   var _sourceIndices = {};
 
@@ -35,7 +36,7 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate", "astrojs/base", "astrojs/
 
 	     // Mark the query as started and begin the data request.
 	     _inFlight = true;
-	     var p = xhr(protocol + "//" + hostName + ":8080/datarelease/", {
+	     var p = xhr(protocol + "//" + hostName + "/node/datarelease/", {
 	       'handleAs': "json",
 	       'query': q
 	     });
@@ -44,6 +45,7 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate", "astrojs/base", "astrojs/
 	     return p;
 	   };
 
+	   
 	   // Go through the source storage and determine the range of sources
 	   // in the source list that we actually have.
 	   var _indexSources = function() {
@@ -88,7 +90,13 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate", "astrojs/base", "astrojs/
 		 _sourceKeys[_sortMethod] = {};
 		 for (var i = 0; i < _sourceLists[_sortMethod].length; i++) {
 		   _sourceKeys[_sortMethod][_sourceLists[_sortMethod][i]] = i;
+		   // Add flags for selections.
+		   if (!(_sourceLists[_sortMethod][i] in _sourceSelections)) {
+		     _sourceSelections[_sourceLists[_sortMethod][i]] = false;
+		   }
 		 }
+
+
 	       }
 
 	       // Index the sources.
@@ -97,32 +105,37 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate", "astrojs/base", "astrojs/
 	       return data;
 	     });
 	   };
+
 	   
 	   // Method to go through a list of sources coming from the Node.js server
 	   // and do some useful things.
 	   var _parseSources = function(data) {
-	     if (typeof(data) !== 'undefined' &&
-		 typeof(data.data) !== 'undefined') {
-	       for (var s in data.data) {
-		 if (data.data.hasOwnProperty(s) &&
+	     // console.log(data);
+	     if (typeof(data) !== 'undefined') {
+	       var dref = data;
+	       if (typeof(data.data) !== 'undefined') {
+		 dref = data.data;
+	       }
+	       for (var s in dref) {
+		 if (dref.hasOwnProperty(s) &&
 		     !_sourceStorage.hasOwnProperty(s)) {
-		   _sourceStorage[s] = data.data[s];
+		   _sourceStorage[s] = dref[s];
 		   // Turn the right ascension and declination into a SkyCoord.
-		   var l = data.data[s].rightAscension.length - 1;
+		   var l = dref[s].rightAscension.length - 1;
 		   var sc = skyCoord.new({
 		       'ra': {
-			   'value': astrojs.hexa2turns(data.data[s].rightAscension[l], {
+			   'value': astrojs.hexa2turns(dref[s].rightAscension[l], {
 			       'units': "hours"
 			   }),
 			   'units': "turns"
 		       },
-		       'dec': data.data[s].declination[l],
+		       'dec': dref[s].declination[l],
 		       'frame': "J2000"
 		       });
 		   _sourceStorage[s].coordinate = sc;
 		   // Compute the absolute value of the closure phase.
 		   _sourceStorage[s].absClosurePhase =
-		     data.data[s].closurePhase.map(Math.abs);
+		     dref[s].closurePhase.map(Math.abs);
 		   // An indicator of whether calculations are up to date.
 		   _sourceStorage[s].upToDate = false;
 		 }
@@ -136,7 +149,7 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate", "astrojs/base", "astrojs/
 	       return;
 	     }
 	   };
-	   
+
 	   // Method to get a set of sources.
 	   var _getSources = function(src, nsrc, includeSource) {
 	     // The query object.
@@ -163,6 +176,15 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate", "astrojs/base", "astrojs/
 	     return _comms_node(cobj).then(_parseSources);
 	   };
 
+	   // Method to get all the entire catalogue.
+	   var _getCatalogue = function() {
+	     var c = xhr("datarelease/datarelease_catalogue.json", {
+	       'handleAs': "json"
+	     });
+
+	     return c.then(_parseSources);
+	   };
+	   
 	   // Take a flux model and return the flux density at the
 	   // specified frequency.
 	   var _fluxModel2Density = function(model, frequency) {
@@ -296,6 +318,9 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate", "astrojs/base", "astrojs/
 
 	   // Our public methods.
 
+	   // Method to get the whole catalogue.
+	   rObj.getCatalogue = _getCatalogue;
+	   
 	   // Method to get the first set of sources from the server.
 	   var _getFirstSources = function(firstSource) {
 	     if (typeof firstSource === 'undefined') {
@@ -426,8 +451,8 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate", "astrojs/base", "astrojs/
 		 'computedSpectralIndex': _sourceStorage[src].computedSpectralIndex,
 		 'siClassification': _sourceStorage[src].siClassification,
 		 'maxFluxDensity': _sourceStorage[src].maxFluxDensity,
-		   'avgFluxDensity': _sourceStorage[src].avgFluxDensity,
-		   'fitValid': _sourceStorage[src].fitValid
+		 'avgFluxDensity': _sourceStorage[src].avgFluxDensity,
+		 'fitValid': _sourceStorage[src].fitValid
 	       };
 	     } else {
 	       return undefined;
@@ -502,8 +527,8 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate", "astrojs/base", "astrojs/
 		 'fluxDensityScatter': _sourceStorage[src].fluxDensityFit[n].fitScatter,
 		 'mjd': _sourceStorage[src].mjd[n],
 		 'rightAscension': _sourceStorage[src].rightAscension[n],
-		   'solarAngle': _sourceStorage[src].solarAngles[n],
-		   'frequencyRange': _sourceStorage[src].fluxDensityFit[n].frequencyRange
+		 'solarAngle': _sourceStorage[src].solarAngles[n],
+		 'frequencyRange': _sourceStorage[src].fluxDensityFit[n].frequencyRange
 	       };
 	     } else {
 	       return undefined;
@@ -716,7 +741,60 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate", "astrojs/base", "astrojs/
 	     return r;
 	   };
 	   rObj.evaluateConditions = _evaluateConditions;
+
+	   // Method that returns if a source is selected.
+	   var _get_source_selection = function(src) {
+	     if (!(src in _sourceSelections)) {
+	       // The source isn't in our list.
+	       return false;
+	     }
+	     return _sourceSelections[src];
+	   };
+	   rObj.sourceSelected = _get_source_selection;
+
+	   // Method that sets the source selection.
+	   var _set_source_selection = function(src, state) {
+	     if (src in _sourceSelections &&
+		 (state === true || state === false)) {
+	       _sourceSelections[src] = state;
+	     }
+	   };
+	   rObj.setSourceSelection = _set_source_selection;
 	   
+	   // Method that de-selects a source.
+	   var _deselect_source = function(src) {
+	     _set_source_selection(src, false);
+	   };
+	   rObj.deselectSource = _deselect_source;
+
+	   // Method that selects a source.
+	   var _select_source = function(src) {
+	     _set_source_selection(src, true);
+	   };
+	   rObj.selectSource = _select_source;
+
+	   // Method that toggles the source selection.
+	   var _toggle_source_selection = function(src) {
+	     if (src in _sourceSelections) {
+	       _sourceSelections[src] = !_sourceSelections[src];
+	       return _sourceSelections[src];
+	     }
+	     return false;
+	   };
+	   rObj.toggleSourceSelection = _toggle_source_selection;
+
+	   // Method that returns a list of all the selected sources.
+	   var _selected_sources = function() {
+	     var srclist = [];
+	     for (var src in _sourceSelections) {
+	       if (_sourceSelections[src]) {
+		 srclist.push(src);
+	       }
+	     }
+	     return srclist;
+	   };
+	   rObj.selectedSources = _selected_sources;
+
 	   // Return our object.
 	   return rObj;
 	   
