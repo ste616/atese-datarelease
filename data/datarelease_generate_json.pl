@@ -23,13 +23,14 @@ my $loc = Astro::Coord::ECI->geodetic($lat, $lon, $alt);
 # assigning it an epoch name.
 
 my $epname = $ARGV[0];
+my $nowrite = $ARGV[1];
 
 my $json = JSON->new;#->indent->space_before->space_after;
 # The catalogue of all sources we have.
 my $catalogue;
 my $catname = $od."/datarelease_catalogue.json";
 
-if (-e $catname) {
+if (-e $catname && !defined $nowrite) {
     open(C, $catname);
     my $cattxt = <C>;
     close(C);
@@ -48,6 +49,7 @@ my @avg_levels = ( 32, 64, 128 );
 
 my @dirs = &findsources();
 my @sources = &compilesources(@dirs);
+my $tooflagged = 0;
 for (my $i = 0; $i <= $#sources; $i++) {
     print "Source: ".$sources[$i]." (".($i + 1)." / ".($#sources + 1).")\n";
     my $d = -1;
@@ -84,6 +86,23 @@ for (my $i = 0; $i <= $#sources; $i++) {
 				  $jsonref->{'hourAngleRange'}->{'low'}) / 2);
     my $mjdmid = sprintf "%.5f", (($jsonref->{'mjdRange'}->{'low'} +
 				   $jsonref->{'mjdRange'}->{'high'}) / 2);
+
+    # Check for enough data before we proceed.
+    my $enough_data = 2;
+    for (my $j = 0; $j <= $#{$jsonref->{'flaggedFraction'}}; $j++) {
+#	printf "  %.3f", $jsonref->{'flaggedFraction'}->[$j];
+	if ($jsonref->{'flaggedFraction'}->[$j] > 0.85) {
+	    $enough_data = $jsonref->{'flaggedFraction'}->[$j];
+	    last;
+	}
+    }
+
+    if ($enough_data < 2) {
+	printf "  %.3f is not enough data!\n", $enough_data;
+	$tooflagged += 1;
+	next;
+    }
+
     if ($d == -1) {
 	$d = $#{$catalogue->{$sources[$i]}->{'mjd'}} + 1;
     }
@@ -92,7 +111,8 @@ for (my $i = 0; $i <= $#sources; $i++) {
     $catalogue->{$sources[$i]}->{'rightAscension'}->[$d] = $jsonref->{'rightAscension'};
     $catalogue->{$sources[$i]}->{'declination'}->[$d] = $jsonref->{'declination'};
     $catalogue->{$sources[$i]}->{'hourAngle'}->[$d] = $hamid * 1.0;
-    $catalogue->{$sources[$i]}->{'closurePhase'}->[$d] = $jsonref->{'closurePhase'}->[0]->{'average_value'};
+    my @srt_cp = sort { $a->{"IF"} <=> $b->{"IF"} } @{$jsonref->{'closurePhase'}};
+    $catalogue->{$sources[$i]}->{'closurePhase'}->[$d] = $srt_cp[$#srt_cp]->{'average_value'};
     $catalogue->{$sources[$i]}->{'defect'}->[$d] = $jsonref->{'defect'}->[0]->{'defect'};
     $catalogue->{$sources[$i]}->{'fluxDensity'}->[$d] = &coeff2flux($jsonref->{'fluxDensityFits'}->[0]->{'fitCoefficients'}, $feval);
     $catalogue->{$sources[$i]}->{'mjd'}->[$d] = $mjdmid * 1.0;
@@ -167,9 +187,13 @@ for (my $i = 0; $i <= $#sources; $i++) {
     }
 }
 
-open(C, ">".$catname);
-print C to_json $catalogue;
-close(C);
+printf "\ndid not accept %d sources, due to insufficient data.\n", $tooflagged;
+
+if (!defined $nowrite) {
+    open(C, ">".$catname);
+    print C to_json $catalogue;
+    close(C);
+}
 
 sub getfrequencies {
     my $src = shift;
@@ -247,8 +271,10 @@ sub jsongen {
 	'closurePhase' => [],
 	'fluxDensityFits' => [],
 	'fluxDensityData' => [],
-	'defect' => []
+	'defect' => [],
+	'flaggedFraction' => []
 	);
+
 	
     for (my $i = 0; $i <= $#stokes; $i++) {
 	my $p = $ps[0]."/".$src;
@@ -294,7 +320,7 @@ sub jsongen {
 		}
 		close(T);
 
-		# Get the closure phase.
+		# Get the closure phase and flagging statistic.
 		for (my $k = 0; $k <= $#{$freqref->[$j]}; $k++) {
 		    my $p2 = $p1.".".$freqref->[$j]->[$k];
 		    my %clop = &measure_closure_phase($p2);
@@ -304,7 +330,10 @@ sub jsongen {
 			'measured_rms' => $clop{'closure_phase'}->{'measured_rms'} * 1.0,
 			'theoretical_rms' => $clop{'closure_phase'}->{'theoretical_rms'} * 1.0
 		    };
+		    push @{$ro{'flaggedFraction'}}, &measure_flagging_statistic($p2);
 		}
+
+
 	    }
 	    my $mjdlow = sprintf "%.5f", $minmjd;
 	    my $mjdhigh = sprintf "%.5f", $maxmjd;
@@ -631,6 +660,35 @@ sub measure_closure_phase {
     }
 
     return %rv;
+}
+
+sub measure_flagging_statistic {
+    my $set = shift;
+
+    my $cmd = "uvfstats vis=".$set." mode=channel options=absolute,unflagged";
+    my $nchans = 0;
+    my $nflagged = 0;
+    my @cout = &execute_miriad($cmd);
+
+    my $strt = 0;
+    for (my $i = 0; $i <= $#cout; $i++) {
+	my $line = $cout[$i];
+	$line =~ s/^\s+//;
+	my @els = split(/\s+/, $line);
+	if ($strt == 1) {
+	    $nchans += 1;
+	    if ($els[1] < 15) {
+		# This is a completely flagged channel basically.
+		$nflagged += 1;
+	    }
+	} else {
+	    if ($els[0] eq "-------") {
+		$strt = 1;
+	    }
+	}
+    }
+    
+    return ($nflagged / $nchans);
 }
 
 sub fluxModel2Alphas {
