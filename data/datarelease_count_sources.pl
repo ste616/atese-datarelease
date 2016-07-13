@@ -19,6 +19,13 @@ my $cattxt = <C>;
 close(C);
 my $ref_catalogue = from_json $cattxt;
 
+if ($#epochs == -1) {
+    # We just want total number of sources.
+    my @srcs = keys %{$ref_catalogue};
+    print "Found ".($#srcs + 1)." observed sources in those epochs.\n";
+    exit;
+}
+
 foreach my $s (keys %{$ref_catalogue}) {
     my $e = $ref_catalogue->{$s}->{'epochs'};
 

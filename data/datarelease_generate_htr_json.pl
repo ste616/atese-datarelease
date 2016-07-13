@@ -11,15 +11,18 @@ my $sourcename = $ARGV[0];
 
 my $json = JSON->new;
 
+print "1. Find all directories for the source $sourcename.\n";
 my @dirs = &findsources($sourcename);
 
+print "2. Making spectra...\n";
 for (my $i = 0; $i <= $#dirs; $i++) {
+    
     print $dirs[$i]."\n";
 }
 
 sub findsources {
     my $s = shift;
-    my @dirs = map { chomp(my $a = $_); $a =~ s/^\.\///; $a =~ s/\.[^\.]*$//; $a } `find . -path "./v3_redo/*/$s.*/visdata"`;
+    my @dirs = map { chomp(my $a = $_); $a =~ s/^\.\///; $a =~ s/\/visdata*$//; $a } `find . -path "*/v3_redo/*/$s.*/visdata"`;
     
     my @sdirs = sort @dirs;
 
