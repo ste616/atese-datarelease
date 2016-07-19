@@ -1,6 +1,6 @@
 define( [ "dojo/request/xhr", "astrojs/skyCoordinate", "astrojs/base", "astrojs/coordinate",
-	  "astrojs/time" ],
-	 function(xhr, skyCoord, astrojs, coord, astroTime) {
+	  "astrojs/time", "dojo/_base/lang" ],
+	function(xhr, skyCoord, astrojs, coord, astroTime, lang) {
 
 	   // The object we return to our caller.
 	   var rObj = {};
@@ -266,25 +266,25 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate", "astrojs/base", "astrojs/
 	     };
 	   };
 
-	     // A helper method to take a JSON object and return a value
-	     // that indicates whether the frequency of the fit would be
-	     // valid for that epoch, but as a function that can be accepted
-	     // by the Array map method.
-	     var _fluxValidAtFrequency = function(freq) {
-		 return function(a) {
-		     return (((freq / 1000.0) >= a.frequencyRange[0]) &&
-			     ((freq / 1000.0) <= a.frequencyRange[1]));
-		 };
+	   // A helper method to take a JSON object and return a value
+	   // that indicates whether the frequency of the fit would be
+	   // valid for that epoch, but as a function that can be accepted
+	   // by the Array map method.
+	   var _fluxValidAtFrequency = function(freq) {
+	     return function(a) {
+	       return (((freq / 1000.0) >= a.frequencyRange[0]) &&
+		       ((freq / 1000.0) <= a.frequencyRange[1]));
 	     };
-
-	     // A helper method to filter flux densities based on their
-	     // frequency validity, but as a function that can be accepted
-	     // by the Array filter method.
-	     var _fluxValidFilter = function(validArr) {
-		 return function(a, idx) {
-		     return validArr[idx];
-		 };
+	   };
+	   
+	   // A helper method to filter flux densities based on their
+	   // frequency validity, but as a function that can be accepted
+	   // by the Array filter method.
+	   var _fluxValidFilter = function(validArr) {
+	     return function(a, idx) {
+	       return validArr[idx];
 	     };
+	   };
 
 	   // A helper method to take a spectral index value and return
 	   // the classification dependent on the range accepted as flat, but
@@ -316,8 +316,53 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate", "astrojs/base", "astrojs/
 	     return (a[i + 1][0] - v[0]);
 	   };
 
+	   // Recursive method to get a value from a path in JSON.
+	   var _getValue = function(r, p) {
+
+	     // Grab the next path element.
+	     if (r === null) {
+	       // Bad, return nothing.
+	       return;
+	     }
+	     var d = r[p[0]];
+	     // console.log('getValue');
+	     // console.log(r);
+	     // console.log(p);
+	     // console.log(d);
+	     
+	     // Return bad if can't find the path element.
+	     if (typeof(d) == 'undefined') {
+	       return undefined;
+	     }
+
+	     // Return the value if we are at the last path element.
+	     if (p.length == 1) {
+	       return d;
+	     }
+
+	     var p2 = lang.clone(p);
+	     p2.shift();
+
+	     // Is d an array?
+	     if ((Array.isArray(d)) && ((p2.length > 1) || (Number.isInteger(p2[p2.length - 1]) == false))) {
+	       var a = [];
+	       for (var i = 0; i < d.length; i++) {
+		 a.push(_getValue(d[i], p2));
+	       }
+	       return a;
+	     }
+
+	     // Otherwise get rid of the first element of the path and continue.
+	     return _getValue(d, p2);
+	     
+	   };
+	   
+	   
 	   // Our public methods.
 
+	   // Assign some pointers to the internal methods.
+	   rObj.fluxModel2Density = _fluxModel2Density;
+	   
 	   // Method to get the whole catalogue.
 	   rObj.getCatalogue = _getCatalogue;
 	   
@@ -795,6 +840,55 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate", "astrojs/base", "astrojs/
 	   };
 	   rObj.selectedSources = _selected_sources;
 
+	   // Method that gets a value from all the sources using a JSON path.
+	   var _valueAllSources = function(path, options) {
+	     var d = [];
+	     for (var s in _sourceStorage) {
+	       var sref = _sourceStorage[s];
+	       d.push(_getValue(sref, path));
+	     }
+
+	     var rd = [].concat.apply([], d);
+
+	     if (typeof options !== 'undefined') {
+	       if (typeof options.log !== 'undefined' &&
+		   options.log === true) {
+		 // Return the log values.
+		 rd = rd.map(Math.log10);
+	       }
+	       if (typeof options.flatten !== 'undefined' &&
+		   options.flatten === false) {
+		 // Don't flatten the arrays.
+		 rd = d;
+	       }
+	     }
+	     
+	     return rd;
+	   };
+	  rObj.valueAllSources = _valueAllSources;
+
+	  // Method to get rid of any value that we don't like from an array, presented
+	  // as a function that can be passed to Array.filter.
+	  var _scrubArray = function(v) {
+	    return function(a) {
+	      return !(a === v);
+	    };
+	  };
+	  rObj.scrubArray = _scrubArray;
+
+	  // Method to do a deep mixing of objects.
+	  var _mixin = function(a, b) {
+	    for (var s in a) {
+	      if (a.hasOwnProperty(s) && (a[s] === Object(a[s])) &&
+		  b.hasOwnProperty(s)) {
+		_mixin(a[s], b[s]);
+		delete b[s];
+	      }
+	    }
+	    lang.mixin(a, b);
+	  };
+	  rObj.mixin = _mixin;
+	  
 	   // Return our object.
 	   return rObj;
 	   

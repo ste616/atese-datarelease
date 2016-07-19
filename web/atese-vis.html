@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <link rel="stylesheet" type="text/css" href="cssreset-min.css" ></link>
+    <link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro|Cousine"
+      rel="stylesheet" type="text/css"></link>
+    <link href="atese.css" rel="stylesheet" type="text/css"></link>
+    <meta charset="utf-8"></meta>
+    <title>ATESE Data Visualisation Page</title>
+    <style>
+      .visLeft { margin: 0.3em; border: 2px solid black; width: 48%; left: 0; float: left; }
+      .visRight { margin: 0.3em; border: 2px solid black; width: 48%; float: right; }
+      figcaption { font-weight: bold; margin: 0px auto; text-align: center; padding: 0.3em; }
+      .visPlot { width: 99%; margin: 0; padding: 0; }
+    </style>
+  </head>
+
+  <body>
+    <div id="title-area">
+      <h1>ATESE Data Visualisation</h1>
+      <h3>Beta_2016-July-19</h3>
+    </div>
+    <div id="visualisation-area">
+      <figure class="visLeft">
+	<div id="vis-fd-near55" class="visPlot"></div>
+	<figcaption>Distribution of flux density measurements near 5.5 GHz.</figcaption>
+      </figure>
+      <figure class="visRight">
+	<div id="vis-fd-eval55" class="visPlot"></div>
+	<figcaption>Distribution of flux density models evaluated at 5.5 GHz.</figcaption>
+      </figure>
+      <figure class="visLeft">
+	<div id="vis-defect" class="visPlot"></div>
+	<figcaption>Distribution of defect measurements.</figcaption>
+      </figure>
+      <figure class="visRight">
+	<div id="vis-closurephase" class="visPlot"></div>
+	<figcaption>Distribution of closure phase measurements.</figcaption>
+      </figure>
+      <figure class="visLeft">
+	<div id="vis-fitrms" class="visPlot"></div>
+	<figcaption>Distribution of fit RMS.</figcaption>
+      </figure>
+      <figure class="visRight">
+	<div id="vis-nmeasurements" class="visPlot"></div>
+	<figcaption>Distribution of number of measurements per source.</figcaption>
+      </figure>
+      <figure class="visLeft">
+	<div id="vis-a0" class="visPlot"></div>
+	<figcaption>Distribution of fit &alpha;<sub>0</sub>.</figcaption>
+      </figure>
+      <figure class="visRight">
+	<div id="vis-a1" class="visPlot"></div>
+	<figcaption>Distribution of fit &alpha;<sub>1</sub>.</figcaption>
+      </figure>
+      <figure class="visLeft">
+	<div id="vis-a2" class="visPlot"></div>
+	<figcaption>Distribution of fit &alpha;<sub>2</sub>.</figcaption>
+      </figure>
+      <figure class="visRight">
+	<div id="vis-a3" class="visPlot"></div>
+	<figcaption>Distribution of fit &alpha;<sub>3</sub>.</figcaption>
+      </figure>
+      <figure class="visLeft">
+	<div id="vis-solarangles" class="visPlot"></div>
+	<figcaption>Distribution of Solar distances.</figcaption>
+      </figure>
+    </div>
+
+    <script src="/jslib/plotly.js/current/plotly.min.js"></script>
+    <script src="/jslib/dojo/configure.js"></script>
+    <script src="/jslib/dojo/1.10.4/dojo/dojo.js"></script>
+    
+    <script src="atese-visualisation.js"></script>
+  </body>
+</html>
