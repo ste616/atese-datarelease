@@ -8,7 +8,7 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate", "astrojs/base", "astrojs/
 	   // Some private variables that we use throughout.
 	   var _sortMethod = "ra"; // By default, we ask for the sources in R.A. order.
 	   var _defaultNumSources = 100; // The number of sources to get from the server at once.
-	   var _lastFrequency, _lastSpectralIndexLowFlat, _lastSpectralIndexHighFlat;
+	   var _lastFrequency = 5500, _lastSpectralIndexLowFlat = -0.2, _lastSpectralIndexHighFlat = 0.2;
 	   
 	   var _inFlight = false; // Set to true when a Node.js query is made.
 	   // The storage.
@@ -48,7 +48,7 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate", "astrojs/base", "astrojs/
 	   
 	   // Go through the source storage and determine the range of sources
 	   // in the source list that we actually have.
-	   var _indexSources = function() {
+	  var _indexSources = function() {
 	     // Initialise our source index if it doesn't yet exist.
 	     if (typeof _sourceIndices[_sortMethod] === 'undefined') {
 	       _sourceIndices[_sortMethod] = { 'min': -1, 'max': -1 };
@@ -182,7 +182,15 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate", "astrojs/base", "astrojs/
 	       'handleAs': "json"
 	     });
 
-	     return c.then(_parseSources);
+	     return c.then(_parseSources).then(function(d) {
+	       _sourceLists['random'] = [];
+	       for (var s in _sourceStorage) {
+		 if (_sourceStorage.hasOwnProperty(s)) {
+		   _sourceLists['random'].push(s);
+		 }
+	       }
+	       return d;
+	     });
 	   };
 	   
 	   // Take a flux model and return the flux density at the
@@ -405,8 +413,8 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate", "astrojs/base", "astrojs/
 	       return rObj;
 	     }
 	     
-	     // We support either time or R.A. sorting.
-	     if (v === 'ra' || v === 'time') {
+	     // We support either time or R.A. or random sorting.
+	     if (v === 'ra' || v === 'time' || v === 'random') {
 	       _sortMethod = v;
 	     }
 
@@ -843,7 +851,8 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate", "astrojs/base", "astrojs/
 	   // Method that gets a value from all the sources using a JSON path.
 	   var _valueAllSources = function(path, options) {
 	     var d = [];
-	     for (var s in _sourceStorage) {
+	     for (var i = 0; i < _sourceLists[_sortMethod].length; i++) {
+	       var s = _sourceLists[_sortMethod][i];
 	       var sref = _sourceStorage[s];
 	       d.push(_getValue(sref, path));
 	     }

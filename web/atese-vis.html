@@ -4,14 +4,23 @@
     <link rel="stylesheet" type="text/css" href="cssreset-min.css" ></link>
     <link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro|Cousine"
       rel="stylesheet" type="text/css"></link>
+    <link href="/jslib/noUiSlider/current/nouislider.min.css" rel="stylesheet"></link>
     <link href="atese.css" rel="stylesheet" type="text/css"></link>
     <meta charset="utf-8"></meta>
     <title>ATESE Data Visualisation Page</title>
     <style>
-      .visLeft { margin: 0.3em; border: 2px solid black; width: 48%; left: 0; float: left; }
+      .visLeft { margin: 0.3em; border: 2px solid black; width: 48%; left: 0; float: left; clear:both; }
       .visRight { margin: 0.3em; border: 2px solid black; width: 48%; float: right; }
       figcaption { font-weight: bold; margin: 0px auto; text-align: center; padding: 0.3em; }
       .visPlot { width: 99%; margin: 0; padding: 0; }
+      .visSpan { clear: both; }
+      .visSkyPlot { height: 1000px; }
+      .slider-div { width: 70%; padding: 2em; padding-left: 5%; clear: both; margin-bottom: 2em; }
+      .slider-name-span { float: left; margin: 0.4em; font-weight: bold; width: 20%; text-align: right;}
+      .slider-slider { float: left; width: 50%; margin: 0.2em 2em; }
+      .slider-input { float: left; width: 10%; margin: 0.2em; }
+      #update-button { clear: both; width: 70%; padding: 2em; padding-left: 5%; margin: 1em; }
+      #button-update { font-weight: bold; background-color: yellow; width: 100%;}
     </style>
   </head>
 
@@ -21,6 +30,12 @@
       <h3>Beta_2016-July-19</h3>
     </div>
     <div id="visualisation-area">
+      <div id="data-selectors">
+
+	<div id="update-button">
+	  <button type="button" id="button-update">UPDATE PLOTS</button>
+	</div>
+      </div>
       <figure class="visLeft">
 	<div id="vis-fd-near55" class="visPlot"></div>
 	<figcaption>Distribution of flux density measurements near 5.5 GHz.</figcaption>
@@ -65,9 +80,44 @@
 	<div id="vis-solarangles" class="visPlot"></div>
 	<figcaption>Distribution of Solar distances.</figcaption>
       </figure>
+      <figure class="visRight">
+	<div id="vis-modindex" class="visPlot"></div>
+	<figcaption>Distribution of modulation indices for flux densities near 5.5 GHz.</figcaption>
+      </figure>
+      <figure class="visLeft">
+	<div id="vis-solar-v-defect" class="visPlot"></div>
+	<figcaption>Distribution of solar angle vs defect.</figcaption>
+      </figure>
+      <figure class="visRight">
+	<div id="vis-closurephase-v-defect" class="visPlot"></div>
+	<figcaption>Distribution of closure phase vs defect.</figcaption>
+      </figure>
+      <figure class="visLeft">
+	<div id="vis-modindex-v-defect" class="visPlot"></div>
+	<figcaption>Distribution of modulation index vs defect.</figcaption>
+      </figure>
+      <figure class="visRight">
+	<div id="vis-modindex-v-closurephase" class="visPlot"></div>
+	<figcaption>Distribution of modulation index vs closure phase.</figcaption>
+      </figure>
+      <figure class="visSpan">
+	<div id="vis-skypos" class="visSkyPlot"></div>
+	<figcaption>
+	  <div>Sky plot of all ATESE sources.</div>
+	  <div>
+	    <label for="skyplot-marker-selector">Marker size by:</label>
+	    <select id="skyplot-marker-selector">
+	      <option value="modindex">Modulation Index</option>
+	      <option value="avgflux">Average Flux Density</option>
+	      <option value="numobs">Number of measurements</option>
+	      <option value="constant">Constant</option>
+	    </select>
+	</figcaption>
+      </figure>
     </div>
 
-    <script src="/jslib/plotly.js/current/plotly.min.js"></script>
+    <script src="/jslib/noUiSlider/current/nouislider.min.js"></script>
+    <script src="/jslib/plotly.js/current/plotly.js"></script>
     <script src="/jslib/dojo/configure.js"></script>
     <script src="/jslib/dojo/1.10.4/dojo/dojo.js"></script>
     
