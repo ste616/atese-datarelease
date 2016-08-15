@@ -106,6 +106,43 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate", "astrojs/base", "astrojs/
 	     });
 	   };
 
+	  // Method to find valid minimum and maximum values from an array.
+	  var _calculate_minmax = function(arr) {
+	    if (typeof arr === "undefined") {
+	      return;
+	    }
+	    var arrd = arr.filter(function(a) { return isFinite(a) && !isNaN(a) && !(a === 999); });
+	    var min = Math.min.apply(null, arrd);
+	    var max = Math.max.apply(null, arrd);
+	    return { 'min': min, 'max': max };
+	  };
+
+	  var _calculateSourceMinMax = function(s) {
+	    if (typeof _sourceStorage[s] === 'undefined') {
+	      return;
+	    }
+
+	    // Compute the minimum and maximum values for each parameter that it makes
+	    // sense for.
+	    _sourceStorage[s].minmax = {
+	      'absClosurePhase': {},
+	      'defect': {},
+	      'fluxDensity': {},
+	      'mjd': {},
+	      'solarAngles': {},
+	    };
+	    for (var mm in _sourceStorage[s].minmax) {
+	      if (_sourceStorage[s].minmax.hasOwnProperty(mm)) {
+		_sourceStorage[s].minmax[mm] = _calculate_minmax(_sourceStorage[s][mm]);
+	      }
+	    }
+	    _sourceStorage[s].minmax.selected = true;
+	    _sourceStorage[s].minmax['closest5.5'] =
+	      _calculate_minmax(_getValue(_sourceStorage[s], [ 'fluxDensityFit', 'closest5.5', 1 ]).map(Math.log10));
+	    _sourceStorage[s].minmax['fitScatter'] =
+	      _calculate_minmax(_getValue(_sourceStorage[s], [ 'fluxDensityFit', 'fitScatter' ]).map(Math.log10));
+
+	  };
 	   
 	   // Method to go through a list of sources coming from the Node.js server
 	   // and do some useful things.
@@ -136,6 +173,9 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate", "astrojs/base", "astrojs/
 		   // Compute the absolute value of the closure phase.
 		   _sourceStorage[s].absClosurePhase =
 		     dref[s].closurePhase.map(Math.abs);
+
+		   _calculateSourceMinMax(s);
+		   
 		   // An indicator of whether calculations are up to date.
 		   _sourceStorage[s].upToDate = false;
 		 }
@@ -373,7 +413,10 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate", "astrojs/base", "astrojs/
 	   
 	   // Method to get the whole catalogue.
 	   rObj.getCatalogue = _getCatalogue;
-	   
+
+	  // Get minimum and maximum values of an array.
+	  rObj.calculate_minmax = _calculate_minmax;
+	  
 	   // Method to get the first set of sources from the server.
 	   var _getFirstSources = function(firstSource) {
 	     if (typeof firstSource === 'undefined') {
@@ -848,34 +891,90 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate", "astrojs/base", "astrojs/
 	   };
 	   rObj.selectedSources = _selected_sources;
 
+	  // Method to make an array of some length filled with the same value.
+	  var _filledArray = function(l, v) {
+	    for (var a = [], i = 0; i < l; i++) {
+	      a[i] = v;
+	    }
+	    return a;
+	  };
+	  
 	   // Method that gets a value from all the sources using a JSON path.
-	   var _valueAllSources = function(path, options) {
-	     var d = [];
-	     for (var i = 0; i < _sourceLists[_sortMethod].length; i++) {
-	       var s = _sourceLists[_sortMethod][i];
-	       var sref = _sourceStorage[s];
-	       d.push(_getValue(sref, path));
-	     }
-
-	     var rd = [].concat.apply([], d);
-
-	     if (typeof options !== 'undefined') {
-	       if (typeof options.log !== 'undefined' &&
-		   options.log === true) {
-		 // Return the log values.
-		 rd = rd.map(Math.log10);
-	       }
-	       if (typeof options.flatten !== 'undefined' &&
-		   options.flatten === false) {
-		 // Don't flatten the arrays.
-		 rd = d;
-	       }
-	     }
-	     
-	     return rd;
-	   };
+	  var _valueAllSources = function(path, options) {
+	    if (typeof options === 'undefined') {
+	      options = {};
+	    }
+	    var d = [];
+	    var sd = [];
+	    for (var i = 0; i < _sourceLists[_sortMethod].length; i++) {
+	      var s = _sourceLists[_sortMethod][i];
+	      var sref = _sourceStorage[s];
+	      if ((options.minmaxSelection &&
+		   sref.hasOwnProperty("minmax") &&
+		   sref.minmax.selected) ||
+		  (!options.minmaxSelection)) {
+		var av = _getValue(sref, path);
+		d.push(av);
+		sd.push(_filledArray(av.length, s));
+	      }
+	    }
+	    
+	    var rd = [].concat.apply([], d);
+	    var rsd = [].concat.apply([], sd);
+	    
+	    if (typeof options.log !== 'undefined' &&
+		options.log === true) {
+	      // Return the log values.
+	      rd = rd.map(Math.log10);
+	    }
+	    if (typeof options.flatten !== 'undefined' &&
+		options.flatten === false) {
+	      // Don't flatten the arrays.
+	      rd = d;
+	      rsd = sd;
+	    }
+	    
+	    if (typeof options.includeSources !== 'undefined' &&
+		options.includeSources === true) {
+	      return { 'values': rd, 'sources': rsd };
+	    }
+	    return rd;
+	  };
 	  rObj.valueAllSources = _valueAllSources;
 
+	  // Method to remove the epoch of source s at index e.
+	  var _removeSourceEpoch = function(s, e) {
+	    var removals = [ 'absClosurePhase', 'arrayConfigurations', 'closurePhase',
+			     'declination', 'defect', 'epochs', 'fluxDensity',
+			     'fluxDensityFit', 'hourAngle', 'mjd', 'rightAscension',
+			     'solarAngles' ];
+	    for (var i = 0; i < removals.length; i++) {
+	      if (typeof _sourceStorage[s] !== 'undefined' &&
+		  typeof _sourceStorage[s][removals[i]] !== 'undefined' &&
+		  _sourceStorage[s][removals[i]].length > e) {
+		_sourceStorage[s][removals[i]].splice(e, 1);
+	      }
+	    }
+	  };
+	  
+	  // Method to strip out measurements that don't include the specified frequency
+	  // (in GHz).
+	  var _stripMeasurements = function(f) {
+	    for (var i = 0; i < _sourceLists[_sortMethod].length; i++) {
+	      var s = _sourceLists[_sortMethod][i];
+	      var sref = _sourceStorage[s];
+	      for (var j = sref.fluxDensityFit.length - 1; j >= 0; j--) {
+		if (sref.fluxDensityFit[j].frequencyRange[0] > f ||
+		    sref.fluxDensityFit[j].frequencyRange[1] < f) {
+		  _removeSourceEpoch(s, j);
+		}
+	      }
+	      // Update the minmax object now.
+	      _calculateSourceMinMax(s);
+	    }
+	  };
+	  rObj.stripMeasurements = _stripMeasurements;
+	  
 	  // Method to get rid of any value that we don't like from an array, presented
 	  // as a function that can be passed to Array.filter.
 	  var _scrubArray = function(v) {
@@ -897,6 +996,68 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate", "astrojs/base", "astrojs/
 	    lang.mixin(a, b);
 	  };
 	  rObj.mixin = _mixin;
+	  
+	  // Method to take an array of arrays, and set them as minmax values for each
+	  // source.
+	  var _store_minmax = function(arr, mmname) {
+	    if (_sourceLists[_sortMethod].length !== arr.length) {
+	      // This won't work.
+	      return;
+	    }
+
+	    for (var i = 0; i < _sourceLists[_sortMethod].length; i++) {
+	      _sourceStorage[_sourceLists[_sortMethod][i]].minmax[mmname] =
+		_calculate_minmax(arr[i]);
+	    }
+	  };
+	  rObj.store_minmax = _store_minmax;
+
+	  // Method to restrict selection of sources based on a value that has
+	  // been evaluated in the minmax object.
+	  var _restrictSelection_minmax = function(minmaxPar, valueLow, valueHigh) {
+	    for (var s in _sourceStorage) {
+	      if (_sourceStorage.hasOwnProperty(s) &&
+		  _sourceStorage[s].hasOwnProperty("minmax") &&
+		  _sourceStorage[s].minmax.hasOwnProperty(minmaxPar)) {
+		if (((_sourceStorage[s].minmax[minmaxPar].min >= valueLow) &&
+		     (_sourceStorage[s].minmax[minmaxPar].min <= valueHigh)) ||
+		    ((_sourceStorage[s].minmax[minmaxPar].max >= valueLow) &&
+		     (_sourceStorage[s].minmax[minmaxPar].max <= valueHigh))) {
+		  // This actually works but we don't re-select, just de-select.
+		  continue;
+		} else {
+		  // This source does not fit the restriction.
+		  _sourceStorage[s].minmax.selected = false;
+		}
+	      }
+	    }
+	  };
+	  rObj.restrictSelection_minmax = _restrictSelection_minmax;
+
+	  // Method to reset the selection of sources based on minmax objects.
+	  var _resetSelection_minmax = function() {
+	    for (var s in _sourceStorage) {
+	      if (_sourceStorage.hasOwnProperty(s)) {
+		_sourceStorage[s].minmax.selected = true;
+	      }
+	    }
+	  };
+	  rObj.resetSelection_minmax = _resetSelection_minmax;
+
+	  // Method to determine how many sources are selected based on the minmax
+	  // objects.
+	  var _countSelection_minmax = function() {
+	    var n = 0;
+	    for (var s in _sourceStorage) {
+	      if (_sourceStorage.hasOwnProperty(s) &&
+		  _sourceStorage[s].minmax.selected === true) {
+		n++;
+	      }
+	    }
+
+	    return n;
+	  };
+	  rObj.countSelection_minmax = _countSelection_minmax;
 	  
 	   // Return our object.
 	   return rObj;

@@ -1,6 +1,6 @@
 require( [ "./atese-common.js", "dojo/dom", "dojo/dom-construct", "dojo/when",
-	   "dojo/on", "dojo/_base/lang", "dojo/dom-attr" ],
-	 function(atese, dom, domConstruct, when, on, lang, domAttr) {
+	   "dojo/on", "dojo/_base/lang", "dojo/dom-attr", "dojo/dom-class", "dojo/number" ],
+	 function(atese, dom, domConstruct, when, on, lang, domAttr, domClass, number) {
 
 	   var resStor = {};
 	   var evaluationRoutines = {};
@@ -45,72 +45,171 @@ require( [ "./atese-common.js", "dojo/dom", "dojo/dom-construct", "dojo/when",
 	       return null;
 	     }
 	   };
-
-	   var minmax = function(arr) {
-	     var arrd = arr.filter(function(a) { return isFinite(a) && !isNaN(a); });
-	     var min = Math.min.apply(null, arrd);
-	     var max = Math.max.apply(null, arrd);
-	     return { 'min': min, 'max': max };
-	   };
-
+	   
+	   var firstComputation = true;
+	   
 	   var necessaryComputations = function() {
 	     // We collect all the computations that are required for our plots
 	     // and later for the source selections.
 
+	     // Number of sources selected.
+	     var numSources = atese.countSelection_minmax();
+	     storeResult("numSelectedSources", numSources);
+	     
 	     // Flux densities.
 	     // The flux densities close to 5.5 GHz.
-	     var fds = atese.valueAllSources([ 'fluxDensityFit', 'closest5.5', 1 ], {
-	       'flatten': false
-	     }).map(function(a) { return a.map(Math.log10); });
-	     storeResult("logAllFluxDensitiesNear5.5", fds);
-	     var mmfds = fds.map(minmax);
-	     storeResult("logAllMinMaxFluxDensitiesNear5.5", mmfds);
-	     var ffds = [].concat.apply([], fds);
+	     var ffds = atese.valueAllSources([ 'fluxDensityFit', 'closest5.5', 1 ], {
+	       'minmaxSelection': true
+	     }).map(Math.log10);
 	     storeResult("logFluxDensitiesNear5.5", ffds);
-	     storeResult("minmax_logFluxDensitiesNear5.5", minmax(ffds));
+	     //console.log(atese.calculate_minmax(ffds.values));
+	     storeResult("minmax_logFluxDensitiesNear5.5", atese.calculate_minmax(ffds));
+	     //storeResult("logFluxDensitiesNear5.5Sources", ffds.sources);
 
 	     // The flux densities evaluated at 5.5 GHz.
 	     var fms = atese.valueAllSources([ 'fluxDensityFit', 'fitCoefficients' ], {
-	       'flatten': false
+	       'flatten': false, 'minmaxSelection': true
 	     }).map(function(a) {
 	       return a.map(function(b) {
 		 return Math.log10(atese.fluxModel2Density(b, 5500));
 	       });
 	     });
 	     storeResult("logAllFluxDensitiesAt5.5", fms);
-	     var mmfms = fms.map(minmax);
-	     storeResult("logAllMinMaxFluxDensitiesAt5.5", mmfms);
+	     if (firstComputation) {
+	       atese.store_minmax(fms, 'at5.5');
+	     }
 	     var ffms = [].concat.apply([], fms);
 	     storeResult("logFluxDensitiesAt5.5", ffms);
-	     storeResult("minmax_logFluxDensitiesAt5.5", minmax(ffms));
+	     storeResult("minmax_logFluxDensitiesAt5.5", atese.calculate_minmax(ffms));
 
 	     // Defects.
-	     var defects = atese.valueAllSources([ 'defect' ], { 'flatten': false }).
-		 map(function(a) { return a.map(Math.log10); });
-	     storeResult("logAllDefects", defects);
-	     var mmdefects = defects.map(minmax);
-	     storeResult("logAllMinMaxDefects", mmdefects);
-	     var fdefects = [].concat.apply([], defects);
+	     var fdefects = atese.valueAllSources([ 'defect' ], {
+	       'minmaxSelection': true
+	     }).map(Math.log10);
 	     storeResult("logDefects", fdefects);
-	     storeResult("minmax_logDefects", minmax(fdefects));
+	     storeResult("minmax_logDefects", atese.calculate_minmax(fdefects));
 
 	     // Closure Phases.
-	     var closurePhases = atese.valueAllSources([ 'closurePhase' ], {
-	       'flatten': false
-	     }).map(function(a) { return a.filter(atese.scrubArray(-999)); });
-	     storeResult("allClosurePhases", closurePhases);
-	     var mmclosurePhases = closurePhases.map(minmax);
-	     storeResult("allMinMaxClosurePhases", mmclosurePhases);
-	     var fclosurePhases = [].concat.apply([], closurePhases);
+	     var fclosurePhases = atese.valueAllSources([ 'closurePhase' ], {
+	       'minmaxSelection': true
+	     });
 	     storeResult("closurePhases", fclosurePhases);
-	     storeResult("minmax_closurePhases", minmax(fclosurePhases));
+	     storeResult("minmax_closurePhases", atese.calculate_minmax(fclosurePhases));
+
+	     // Fit scatters.
+	     var fscatters = atese.valueAllSources([ 'fluxDensityFit', 'fitScatter' ], {
+	       'minmaxSelection': true
+	     }).map(Math.log10);
+	     storeResult("logFitScatters", fscatters);
+
+	     // Number of measurements.
+	     var nmeas = atese.valueAllSources([ 'epochs' ], {
+	       'flatten': false, 'minmaxSelection': true
+	     }).map(function(a) {
+	       return Math.log10(a.length);
+	     });
+	     storeResult("logNumMeasurements", nmeas);
+
+	     // Alphas.
+	     var alphas = [];
+	     for (var i = 0; i < 4; i++) {
+	       var a = atese.valueAllSources([ 'fluxDensityFit', 'alphas5.5', i ], {
+		 'minmaxSelection': true
+	       });
+	       if (i == 0) {
+		 var b = a.map(Math.log10);
+		 a = b;
+	       }
+	       alphas.push(a);
+	     }
+	     storeResult("alphas5.5", alphas);
+
+	     // Solar angles.
+	     var solarAngles = atese.valueAllSources([ 'solarAngles' ], {
+	       'minmaxSelection': true
+	     });
+	     storeResult("solarAngles", solarAngles);
+	     
+	     firstComputation = false;
+	   };
+
+	   var measurementFilterFunction = function(range) {
+	     return function(a) {
+	       return ((a >= range[0]) && (a <= range[1]));
+	     };
+	   };
+
+	   var filterFromArray = function(arr) {
+	     return function(a, i) {
+	       return arr[i];
+	     };
+	   };
+	   
+	   var measurementFilter = function() {
+	     // We take each of the stored arrays, and filter them to remove the
+	     // measurements that don't match the ranges we're allowing.
+	     // Flux densities close to 5.5 GHz.
+	     var ffds = fetchResult("logFluxDensitiesNear5.5");
+	     //var fss = fetchResult("logFluxDensitiesNear5.5Sources");
+	     var fdsRange = getSliderValues("fds-slider");
+	     var filter_ffds = ffds.map(measurementFilterFunction(fdsRange));
+
+	     // Flux densities at 5.5 GHz.
+	     var fms = fetchResult("logFluxDensitiesAt5.5");
+	     var fmsRange = getSliderValues("fms-slider");
+	     var filter_fms = fms.map(measurementFilterFunction(fmsRange));
+
+	     // Defects.
+	     var def = fetchResult("logDefects");
+	     var defRange = getSliderValues("defect-slider");
+	     var filter_def = def.map(measurementFilterFunction(defRange));
+
+	     // Closure phases.
+	     var clp = fetchResult("closurePhases");
+
+	     // Fit scatters.
+	     var fts = fetchResult("logFitScatters");
+
+	     // Number of measurements.
+	     
+	     // Alphas.
+	     var alp = fetchResult("alphas5.5");
+
+	     // Solar angles.
+	     var sol = fetchResult("solarAngles");
+	     
+	     // Now make a master filter array.
+	     var filterArray = [];
+	     for (var i = 0; i < filter_ffds.length; i++) {
+	       filterArray[i] = filter_ffds[i] && filter_fms[i] && filter_def[i];
+	     }
+	     
+	     // And filter the arrays.
+	     var arrFilter = filterFromArray(filterArray);
+	     var filtered_ffds = ffds.filter(arrFilter);
+	     storeResult("logFluxDensitiesNear5.5", filtered_ffds);
+	     var filtered_fms = fms.filter(arrFilter);
+	     storeResult("logFluxDensitiesAt5.5", filtered_fms);
+	     var filtered_def = def.filter(arrFilter);
+	     storeResult("logDefects", filtered_def);
+	     var filtered_clp = clp.filter(arrFilter);
+	     storeResult("closurePhases", filtered_clp);
+	     var filtered_fts = fts.filter(arrFilter);
+	     storeResult("logFitScatters", filtered_fts);
+	     var filtered_alp = alp.map(function(a) {
+	       return a.filter(arrFilter);
+	     });
+	     storeResult("alphas5.5", filtered_alp);
+	     var filtered_sol = sol.filter(arrFilter);
+	     storeResult("solarAngles", filtered_sol);
 	   };
 	   
 	   var fdsHistogram = function(domNode) {
 	     // This makes a histogram of the flux densities measured as close to 5.5 GHz
 	     // as possible.
 	     var fds = fetchResult("logFluxDensitiesNear5.5");
-
+	     domAttr.set('nmeasurements-shown', "innerHTML", fds.length);
+	     
 	     plotHistogram(fds, domNode, { 'xaxis': { 'title': "log(Measured flux density near 5.5 GHz [Jy])" },
 					   'yaxis': { 'title': "Number of measurements" } });
 	   };
@@ -118,7 +217,13 @@ require( [ "./atese-common.js", "dojo/dom", "dojo/dom-construct", "dojo/when",
 	   var fmsHistogram = function(domNode) {
 	     // This computes and makes a histogram of the flux models evaluated at 5.5 GHz.
 	     var fds = fetchResult("logFluxDensitiesAt5.5");
-
+	     var nfds = parseInt(domAttr.get('nmeasurements-shown', "innerHTML"));
+	     if (nfds !== fds.length) {
+	       domClass.add('nmeasurements-shown', 'error');
+	     } else {
+	       domClass.remove('nmeasurements-shown', 'error');
+	     }
+	     
 	     plotHistogram(fds, domNode, { 'xaxis': { 'title': "log(Evaluated flux density at 5.5 GHz [Jy])" },
 					   'yaxis': { 'title': "Number of measurements" } });
 	   };
@@ -131,20 +236,9 @@ require( [ "./atese-common.js", "dojo/dom", "dojo/dom-construct", "dojo/when",
 					    'yaxis': { 'title': "Number of measurements" } });
 	   };
 
-	   var getClosurePhases = function() {
-	     var closurePhases = fetchResult("closurePhases");
-	     if (closurePhases === null) {
-	       closurePhases = atese.valueAllSources([ 'closurePhase' ], {
-		 'evaluationRoutines': evaluationRoutines, 'evaluationOptions': evaluationOptions
-	       }).filter(atese.scrubArray(-999));
-	       storeResult("closurePhases", closurePhases);
-	     }
-	     return closurePhases;
-	   };
-	   
 	   var closurePhaseHistogram = function(domNode) {
 	     // This makes a histogram of all the closure phases.
-	     var clophas = fetchResult("closurePhases");
+	     var clophas = fetchResult("closurePhases").filter(atese.scrubArray(-999));;
 	     
 	     plotHistogram(clophas, domNode, { 'xaxis': { 'title': "Closure phase [deg]" },
 					       'yaxis': { 'title': "Number of measurements" } });
@@ -152,66 +246,36 @@ require( [ "./atese-common.js", "dojo/dom", "dojo/dom-construct", "dojo/when",
 
 	   var fitrmsHistogram = function(domNode) {
 	     // This makes a histogram of all the RMS fit scatters.
-	     var scatters = atese.valueAllSources([ 'fluxDensityFit', 'fitScatter' ], {
-	       'log': true, 'evaluationRoutines': evaluationRoutines, 'evaluationOptions': evaluationOptions
-	     });
-	     storeResult("logFitScatters", scatters);
+	     var scatters = fetchResult("logFitScatters");
 	     plotHistogram(scatters, domNode, { 'xaxis': { 'title': "log(Fit Scatter RMS [Jy])" },
 						'yaxis': { 'title': "Number of measurements" } });
 	   };
 
-	   var getNumberMeasurements = function() {
-	     var nmeas = fetchResult("logNumMeasurements");
-	     if (nmeas === null) {
-	       var meas = atese.valueAllSources([ 'epochs' ], {
-		 'flatten': false, 'evaluationRoutines': evaluationRoutines, 'evaluationOptions': evaluationOptions
-	       });
-	       nmeas = meas.map(function(a) { return Math.log10(a.length); });
-	       storeResult("logNumMeasurements", nmeas);
-	     }
-	     return nmeas;
-	   }
-	   
 	   var nmeasHistogram = function(domNode) {
 	     // This makes a histogram of the number of measurements per source.
-	     var nmeas = getNumberMeasurements();
+	     var nmeas = fetchResult("logNumMeasurements");
 	     plotHistogram(nmeas, domNode, { 'xaxis': { 'title': "log(Number of measurements)" },
 					     'yaxis': { 'title': "Number of sources" } });
 	   };
 	   
 	   var alphasHistograms = function(domNodes) {
 	     // This makes several histograms of the fit alphas.
+	     var alphas = fetchResult("alphas5.5");
 	     for (var i = 0; i < domNodes.length; i++) {
-	       var o = { 'evaluationRoutines': evaluationRoutines, 'evaluationOptions': evaluationOptions };
-	       if (i === 0) {
-		 o['log'] = true;
-	       }
-	       var alphas = atese.valueAllSources([ 'fluxDensityFit', 'alphas5.5', i ], o);
-	       plotHistogram(alphas, domNodes[i], { 'xaxis': { 'title': "&alpha;<sub>" + i + "</sub>" },
-						    'yaxis': { 'title': "Number of measurements" } });
+	       plotHistogram(alphas[i], domNodes[i], { 'xaxis': { 'title': "&alpha;<sub>" + i + "</sub>" },
+						       'yaxis': { 'title': "Number of measurements" } });
 	     }
 	   };
 
-	   var getSolarAngles = function() {
-	     var solarAngles = fetchResult("solarAngles");
-	     if (solarAngles === null) {
-	       solarAngles = atese.valueAllSources([ 'solarAngles' ], {
-		 'evaluationRoutines': evaluationRoutines, 'evaluationOptions': evaluationOptions
-	       });
-	       storeResult("solarAngles", solarAngles);
-	     }
-	     return solarAngles;
-	   }
-	   
 	   var solarHistogram = function(domNode) {
-	     var soldist = getSolarAngles();
+	     var soldist = fetchResult("solarAngles");
 	     plotHistogram(soldist, domNode, { 'xaxis': { 'title': "Solar distance [deg]" },
 					       'yaxis': { 'title': "Number of measurements" } });
 
 	   };
 
 	   var solarDefectHistogram = function(domNode) {
-	     var soldist = getSolarAngles();
+	     var soldist = fetchResult("solarAngles");
 	     var defs = fetchResult("logDefects");
 
 	     plot2DHistogram(defs, soldist, domNode, {
@@ -221,7 +285,7 @@ require( [ "./atese-common.js", "dojo/dom", "dojo/dom-construct", "dojo/when",
 	   };
 
 	   var closurephaseDefectHistogram = function(domNode) {
-	     var clophas = getClosurePhases();
+	     var clophas = fetchResult("closurePhases");
 	     var defs = fetchResult("logDefects");
 
 	     plot2DHistogram(defs, clophas, domNode, {
@@ -269,7 +333,7 @@ require( [ "./atese-common.js", "dojo/dom", "dojo/dom-construct", "dojo/when",
 	   };
 
 	   var closurephaseModindexHistogram = function(domNode) {
-	     var clophas = getClosurePhases();
+	     var clophas = fetchResult("closurePhases");
 	     var modindices = getModulationIndices();
 	     plot2DHistogram(clophas, modindices, domNode, {
 	       'histnorm': 'percent',
@@ -360,8 +424,13 @@ require( [ "./atese-common.js", "dojo/dom", "dojo/dom-construct", "dojo/when",
 	       'id': id,
 	       'class': 'slider-slider'
 	     }, sliderDiv);
+
+	     // The values get rounded to 0.01 place.
+	     min = number.round((min - 0.01), 2);
+	     max = number.round((max + 0.01), 2);
+
 	     noUiSlider.create(sliderSpan, {
-	       'start': [ min, max ],
+	       'start': [ (min - 0.01), (max + 0.01) ],
 	       'connect': true,
 	       'orientation': 'horizontal',
 	       'range': { 'min': min, 'max': max },
@@ -431,72 +500,6 @@ require( [ "./atese-common.js", "dojo/dom", "dojo/dom-construct", "dojo/when",
 	     return null;
 	   };
 
-	   var evaluationRoutineGenerator = {
-	     // Number of epochs.
-	     'numEpochs': function(l, h, invert) {
-	       return function(srcData) {
-		 var rv = false;
-		 if ((srcData.epochs.length >= l) &&
-		     (srcData.epochs.length <= h)) {
-		   rv = true;
-		 }
-		 if (invert) {
-		   return !rv;
-		 }
-		 return rv;
-	       };
-	     },
-	     'defect': function(l, h, invert) {
-	       return function(srcData) {
-		 var rv = false;
-		 for (var i = 0; i < srcData.defect.length; i++) {
-		   if ((srcData.defect[i] <= l) &&
-		       (srcData.defect[i] >= h)) {
-		     rv = true;
-		     break;
-		   }
-		 }
-		 if (invert) {
-		   return !rv;
-		 }
-		 return rv;
-	       };
-	     },
-	     'closurePhase': function(l, h, invert) {
-	       return function(srcData) {
-		 var rv = false;
-		 for (var i = 0; i < srcData.closurePhase.length; i++) {
-		   if ((Math.abs(srcData.closurePhase[i]) <= l) &&
-		       (Math.abs(srcData.closurePhase[i]) >= h)) {
-		     rv = true;
-		     break;
-		   }
-		 }
-		 if (invert) {
-		   return !rv;
-		 }
-		 return rv;
-	       };
-	     },
-	     'fluxDensityEval': function(l, h, invert) {
-	       return function(srcData) {
-		 var rv = false;
-		 if (typeof srcData.computedFluxDensity !== "undefined") {
-		   for (var i = 0; i < srcData.computedFluxDensity.length; i++) {
-		     if ((srcData.computedFluxDensity[i] >= l) &&
-			 (srcData.computedFluxDensity[i] <= h)) {
-		       rv = true;
-		     }
-		   }
-		 }
-		 if (invert) {
-		   return !rv;
-		 }
-		 return rv;
-	       };
-	     }
-	   };
-	   
 	   var makeSliders = function() {
 	     // This routine adds all the sliders that we want to the page.
 	     var fdsMinMax = fetchResult('minmax_logFluxDensitiesNear5.5');
@@ -506,31 +509,46 @@ require( [ "./atese-common.js", "dojo/dom", "dojo/dom-construct", "dojo/when",
 	     var fmsMinMax = fetchResult('minmax_logFluxDensitiesAt5.5');
 	     domAttr.set(addSlider('fms-slider', fmsMinMax.min, fmsMinMax.max),
 			 'innerHTML', "log(fd at 5.5GHz)");
-	     
+
+	     var defMinMax = fetchResult('minmax_logDefects');
+	     domAttr.set(addSlider('defect-slider', defMinMax.min, defMinMax.max),
+			 'innerHTML', "log(defect [%])");
 	     
 	     on(dom.byId('button-update'), 'click', function() {
 	       // Get all the ranges.
 	       var fdsRange = getSliderValues('fds-slider');
 	       var fmsRange = getSliderValues('fms-slider');
+	       var defRange = getSliderValues('defect-slider');
 
 	       // Clear out our data storage.
 	       resStor = {};
+	       // Reset the restrictions.
+	       atese.resetSelection_minmax();
 
-	       // Select sources based on ranges.
-	       evaluationRoutines = {};
-	       evaluationRoutines.fluxDensityEval =
-		 evaluationRoutineGenerator['fluxDensityEval'](Math.pow(10, fmsRange[0]),
-							       Math.pow(10, fmsRange[1]), false);
+	       // Go through and make the selections.
+	       atese.restrictSelection_minmax('closest5.5', fdsRange[0], fdsRange[1]);
+	       atese.restrictSelection_minmax('at5.5', fmsRange[0], fmsRange[1]);
+	       atese.restrictSelection_minmax('defect', Math.pow(10, fmsRange[0]), Math.pow(10, fmsRange[1]));
+	       
 	       visualise();
 	     });
 	   };
 	   
 	   // The master visualisation routine.
+	   var firstVisualise = true;
 	   var visualise = function(data) {
 	     console.log(data);
-
+	     if (firstVisualise) {
+	       atese.stripMeasurements(5.5);
+	     }
+	     
 	     necessaryComputations();
-
+	     if (!firstVisualise) {
+	       measurementFilter();
+	     }
+	     
+	     domAttr.set('nsources-selected', 'innerHTML', fetchResult("numSelectedSources"));
+	     
 	     fdsHistogram(dom.byId('vis-fd-near55'));
 	     fmsHistogram(dom.byId('vis-fd-eval55'));
 
@@ -547,23 +565,22 @@ require( [ "./atese-common.js", "dojo/dom", "dojo/dom-construct", "dojo/when",
 	     closurephaseModindexHistogram(dom.byId('vis-modindex-v-closurephase'));
 	     skyPlot(dom.byId('vis-skypos'));
 
-	     // Enable the marker size changer.
-	     on(dom.byId('skyplot-marker-selector'), 'change', function() {
-	       var markerSizes = getMarkerSizes();
-	       var graphDiv = dom.byId('vis-skypos');
-	       console.log(graphDiv.data);
-	       console.log(graphDiv.layout);
-	       graphDiv.data[0].marker.size = markerSizes;
-	       graphDiv.layout.geo.lonaxis.range = [];
-	       graphDiv.layout.geo.lataxis.range = [];
-	       Plotly.redraw(graphDiv);
-	     });
+	     if (firstVisualise) {
+	       // Enable the marker size changer.
+	       on(dom.byId('skyplot-marker-selector'), 'change', function() {
+		 var markerSizes = getMarkerSizes();
+		 var graphDiv = dom.byId('vis-skypos');
+		 console.log(graphDiv.data);
+		 console.log(graphDiv.layout);
+		 graphDiv.data[0].marker.size = markerSizes;
+		 graphDiv.layout.geo.lonaxis.range = [];
+		 graphDiv.layout.geo.lataxis.range = [];
+		 Plotly.redraw(graphDiv);
+	       });
+	     }
 
-	     //dom.byId('vis-skypos').on('plotly_unhover', function(e, d) { console.log(e); console.log(d); });
-	     
-	     //on(dom.byId('vis-skypos'), 'wheel', function(eventdata) {
-	     //  console.log(eventdata);
-	     //});	   };
+	     firstVisualise = false;
+
 	   };
 	     
 	   // Grab the data, then do the visualisations.

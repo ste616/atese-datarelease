@@ -21,6 +21,10 @@
       .slider-input { float: left; width: 10%; margin: 0.2em; }
       #update-button { clear: both; width: 70%; padding: 2em; padding-left: 5%; margin: 1em; }
       #button-update { font-weight: bold; background-color: yellow; width: 100%;}
+      #data-selectors { float: left; width: 80%; }
+      #data-nsources { float: right; padding: 1em; padding-right: 3em; text-align: center; }
+      #nsources-selected, #nmeasurements-shown { font-size: 3em; font-weight: bold; }
+      .error { color: red; }
     </style>
   </head>
 
@@ -35,6 +39,12 @@
 	<div id="update-button">
 	  <button type="button" id="button-update">UPDATE PLOTS</button>
 	</div>
+      </div>
+      <div id="data-nsources">
+	<h2>Number of sources selected</h2>
+	<span id="nsources-selected">0</span>
+	<h2>Number of measurements shown</h2>
+	<span id="nmeasurements-shown">0</span>
       </div>
       <figure class="visLeft">
 	<div id="vis-fd-near55" class="visPlot"></div>
