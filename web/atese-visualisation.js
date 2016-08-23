@@ -55,6 +55,20 @@ require( [ "./atese-common.js", "dojo/dom", "dojo/dom-construct", "dojo/when",
 	     // Number of sources selected.
 	     var numSources = atese.countSelection_minmax();
 	     storeResult("numSelectedSources", numSources);
+	     if (firstComputation) {
+	       storeResult("numAllSources", numSources);
+	     }
+
+	     var srcList = atese.getSourceList_minmax();
+	     var epochs = atese.valueAllSources([ 'epochs' ], {
+	       'minmaxSelection': true, 'flatten': false
+	     }).map(function(a, i) {
+	       return a.map(function(b) {
+		 return (srcList[i] + " " + b);
+	       });
+	     });
+	     var fepochs = [].concat.apply([], epochs);
+	     storeResult("allMeasurements", fepochs);
 	     
 	     // Flux densities.
 	     // The flux densities close to 5.5 GHz.
@@ -62,9 +76,10 @@ require( [ "./atese-common.js", "dojo/dom", "dojo/dom-construct", "dojo/when",
 	       'minmaxSelection': true
 	     }).map(Math.log10);
 	     storeResult("logFluxDensitiesNear5.5", ffds);
-	     //console.log(atese.calculate_minmax(ffds.values));
 	     storeResult("minmax_logFluxDensitiesNear5.5", atese.calculate_minmax(ffds));
-	     //storeResult("logFluxDensitiesNear5.5Sources", ffds.sources);
+	     if (firstComputation) {
+	       storeResult("numAllMeasurements", ffds.length);
+	     }
 
 	     // The flux densities evaluated at 5.5 GHz.
 	     var fms = atese.valueAllSources([ 'fluxDensityFit', 'fitCoefficients' ], {
@@ -94,21 +109,27 @@ require( [ "./atese-common.js", "dojo/dom", "dojo/dom-construct", "dojo/when",
 	       'minmaxSelection': true
 	     });
 	     storeResult("closurePhases", fclosurePhases);
-	     storeResult("minmax_closurePhases", atese.calculate_minmax(fclosurePhases));
+	     storeResult("minmax_closurePhases", atese.calculate_minmax(fclosurePhases.filter(atese.scrubArray(-999))));
 
 	     // Fit scatters.
 	     var fscatters = atese.valueAllSources([ 'fluxDensityFit', 'fitScatter' ], {
 	       'minmaxSelection': true
 	     }).map(Math.log10);
 	     storeResult("logFitScatters", fscatters);
+	     storeResult("minmax_logFitScatters", atese.calculate_minmax(fscatters));
 
 	     // Number of measurements.
 	     var nmeas = atese.valueAllSources([ 'epochs' ], {
 	       'flatten': false, 'minmaxSelection': true
 	     }).map(function(a) {
-	       return Math.log10(a.length);
+	       return a.map(function(b) {
+		 return Math.log10(a.length);
+	       });
 	     });
-	     storeResult("logNumMeasurements", nmeas);
+	     storeResult("logAllNumMeasurements", nmeas);
+	     var fnmeas = [].concat.apply([], nmeas);
+	     storeResult("logNumMeasurements", fnmeas);
+	     storeResult("minmax_logNumMeasurements", atese.calculate_minmax(fnmeas));
 
 	     // Alphas.
 	     var alphas = [];
@@ -129,8 +150,45 @@ require( [ "./atese-common.js", "dojo/dom", "dojo/dom-construct", "dojo/when",
 	       'minmaxSelection': true
 	     });
 	     storeResult("solarAngles", solarAngles);
+	     storeResult("minmax_solarAngles", atese.calculate_minmax(solarAngles));
+	     
+	     // Modulation indices.
+	     // We need the flux densities near 5.5 GHz, per source.
+	     var fds = atese.valueAllSources([ 'fluxDensityFit', 'closest5.5', 1 ], {
+	       'flatten': false, 'minmaxSelection': true
+	     });
+	     // Compute the mean flux density for each source.
+	     var meanfds = fds.map(function(a) {
+	       return (a.reduce(function(p, c) { return (p + c); }, 0) / (a.length || 1));
+	     });
+	     var logmfds = meanfds.map(Math.log10);
+	     storeResult("logMeanFluxDensities", logmfds);
+	     // Now compute the difference from the mean, squared.
+	     var modulationIndices = fds.map(function(a, i) {
+	       var mi = Math.sqrt(a.reduce(function(p, c) {
+		 return (p + Math.pow((c - meanfds[i]), 2));
+	       }, 0)) / (meanfds[i]);
+	       if (mi === 0) {
+		 mi = 0.001;
+	       }
+	       return (Math.log10(mi));
+	     });
+	     storeResult("logSourceModulationIndices", modulationIndices);
+	     storeResult("minmax_logModulationIndices", atese.calculate_minmax(modulationIndices));
+	     // Store the same result for each of the measurements.
+	     var allModulationIndices = fds.map(function(a, i) {
+	       return a.map(function(b) {
+		 return modulationIndices[i];
+	       });
+	     });
+	     var fallModulationIndices = [].concat.apply([], allModulationIndices);
+	     storeResult("logModulationIndices", fallModulationIndices);
+	     if (firstComputation) {
+	       atese.store_minmax(allModulationIndices, 'modIndex');
+	     }
 	     
 	     firstComputation = false;
+
 	   };
 
 	   var measurementFilterFunction = function(range) {
@@ -151,41 +209,83 @@ require( [ "./atese-common.js", "dojo/dom", "dojo/dom-construct", "dojo/when",
 	     // Flux densities close to 5.5 GHz.
 	     var ffds = fetchResult("logFluxDensitiesNear5.5");
 	     //var fss = fetchResult("logFluxDensitiesNear5.5Sources");
-	     var fdsRange = getSliderValues("fds-slider");
+	     var fdsRange = getSliderValues("vis-fd-near55");
 	     var filter_ffds = ffds.map(measurementFilterFunction(fdsRange));
 
 	     // Flux densities at 5.5 GHz.
 	     var fms = fetchResult("logFluxDensitiesAt5.5");
-	     var fmsRange = getSliderValues("fms-slider");
+	     var fmsRange = getSliderValues("vis-fd-eval55");
 	     var filter_fms = fms.map(measurementFilterFunction(fmsRange));
 
 	     // Defects.
 	     var def = fetchResult("logDefects");
-	     var defRange = getSliderValues("defect-slider");
+	     var defRange = getSliderValues("vis-defect");
 	     var filter_def = def.map(measurementFilterFunction(defRange));
 
 	     // Closure phases.
 	     var clp = fetchResult("closurePhases");
-
+	     var clpRange = getSliderValues("vis-closurephase");
+	     var filter_clp = clp.map(measurementFilterFunction(clpRange));
+	     
 	     // Fit scatters.
 	     var fts = fetchResult("logFitScatters");
-
+	     var ftsRange = getSliderValues("vis-fitrms");
+	     var filter_fts = fts.map(measurementFilterFunction(ftsRange));
+	     
 	     // Number of measurements.
+	     var num = fetchResult("logNumMeasurements");
+	     var numRange = getSliderValues("vis-nmeasurements");
+	     var filter_num = num.map(measurementFilterFunction(numRange));
 	     
 	     // Alphas.
 	     var alp = fetchResult("alphas5.5");
 
 	     // Solar angles.
 	     var sol = fetchResult("solarAngles");
+	     var solRange = getSliderValues("vis-solarangles");
+	     var filter_sol = sol.map(measurementFilterFunction(solRange));
+
+	     // Modulation Indices.
+	     var mod = fetchResult("logModulationIndices");
+	     var modRange = getSliderValues("vis-modindex");
+	     var filter_mod = mod.map(measurementFilterFunction(modRange));
+
+	     // The measurement names.
+	     var nam = fetchResult("allMeasurements");
 	     
 	     // Now make a master filter array.
 	     var filterArray = [];
+	     var revFilterArray = [];
+	     var reasonArray = [];
 	     for (var i = 0; i < filter_ffds.length; i++) {
-	       filterArray[i] = filter_ffds[i] && filter_fms[i] && filter_def[i];
+	       filterArray[i] = filter_ffds[i] && filter_fms[i] && filter_def[i] &&
+		 filter_clp[i] && filter_fts[i] && filter_num[i] && filter_sol[i] &&
+		 filter_mod[i];
+	       revFilterArray[i] = !filterArray[i];
+	       if (revFilterArray[i]) {
+		 if (!filter_ffds[i]) {
+		   reasonArray[i] = "flux density";
+		 } else if (!filter_fms[i]) {
+		   reasonArray[i] = "model eval";
+		 } else if (!filter_def[i]) {
+		   reasonArray[i] = "defect";
+		 } else if (!filter_clp[i]) {
+		   reasonArray[i] = "closure phase";
+		 } else if (!filter_fts[i]) {
+		   reasonArray[i] = "fit scatter";
+		 } else if (!filter_num[i]) {
+		   reasonArray[i] = "number measurements";
+		 } else if (!filter_sol[i]) {
+		   reasonArray[i] = "solar angle";
+		 } else if (!filter_mod[i]) {
+		   reasonArray[i] = "modulation index";
+		 }
+	       }
 	     }
 	     
 	     // And filter the arrays.
 	     var arrFilter = filterFromArray(filterArray);
+	     var arrRevFilter = filterFromArray(revFilterArray);
 	     var filtered_ffds = ffds.filter(arrFilter);
 	     storeResult("logFluxDensitiesNear5.5", filtered_ffds);
 	     var filtered_fms = fms.filter(arrFilter);
@@ -196,19 +296,29 @@ require( [ "./atese-common.js", "dojo/dom", "dojo/dom-construct", "dojo/when",
 	     storeResult("closurePhases", filtered_clp);
 	     var filtered_fts = fts.filter(arrFilter);
 	     storeResult("logFitScatters", filtered_fts);
+	     var filtered_num = num.filter(arrFilter);
+	     storeResult("logNumMeasurements", filtered_num);
 	     var filtered_alp = alp.map(function(a) {
 	       return a.filter(arrFilter);
 	     });
 	     storeResult("alphas5.5", filtered_alp);
 	     var filtered_sol = sol.filter(arrFilter);
 	     storeResult("solarAngles", filtered_sol);
+	     var filtered_mod = mod.filter(arrFilter);
+	     storeResult("logModulationIndices", filtered_mod);
+	     var filtered_nam = nam.filter(arrRevFilter);
+	     var filtered_reasons = reasonArray.filter(arrRevFilter);
+	     storeResult("allMeasurements", filtered_nam);
+	     storeResult("allReasons", filtered_reasons);
 	   };
 	   
 	   var fdsHistogram = function(domNode) {
 	     // This makes a histogram of the flux densities measured as close to 5.5 GHz
 	     // as possible.
 	     var fds = fetchResult("logFluxDensitiesNear5.5");
-	     domAttr.set('nmeasurements-shown', "innerHTML", fds.length);
+	     var pctSelectedMeasurements = number.round((fds.length / fetchResult("numAllMeasurements")) * 100, 1);
+	     domAttr.set('nmeasurements-shown', "innerHTML", fds.length + " (" +
+			 pctSelectedMeasurements + "%)");
 	     
 	     plotHistogram(fds, domNode, { 'xaxis': { 'title': "log(Measured flux density near 5.5 GHz [Jy])" },
 					   'yaxis': { 'title': "Number of measurements" } });
@@ -253,7 +363,9 @@ require( [ "./atese-common.js", "dojo/dom", "dojo/dom-construct", "dojo/when",
 
 	   var nmeasHistogram = function(domNode) {
 	     // This makes a histogram of the number of measurements per source.
-	     var nmeas = fetchResult("logNumMeasurements");
+	     var nmeas = fetchResult("logAllNumMeasurements").map(function(a) {
+	       return a[0];
+	     });
 	     plotHistogram(nmeas, domNode, { 'xaxis': { 'title': "log(Number of measurements)" },
 					     'yaxis': { 'title': "Number of sources" } });
 	   };
@@ -293,39 +405,16 @@ require( [ "./atese-common.js", "dojo/dom", "dojo/dom-construct", "dojo/when",
 	       'yaxis': { 'title': "Closure phase [deg]", 'type': 'linear' } });
 	   };
 
-	   var getModulationIndices = function() {
-	     var modulationIndices = fetchResult("logModulationIndices");
-	     if (modulationIndices === null) {
-	       // We need the flux densities near 5.5 GHz, per source.
-	       var fds = atese.valueAllSources([ 'fluxDensityFit', 'closest5.5', 1 ], {
-		 'flatten': false, 'evaluationRoutines': evaluationRoutines, 'evaluationOptions': evaluationOptions
-	       });
-	       // Compute the mean flux density for each source.
-	       var meanfds = fds.map(function(a) {
-		 return (a.reduce(function(p, c) { return (p + c); }, 0) / (a.length || 1));
-	       });
-	       var logmfds = meanfds.map(function(a) { return Math.log10(a); });
-	       storeResult("logMeanFluxDensities", logmfds);
-	       // Now compute the difference from the mean, squared.
-	       modulationIndices = fds.map(function(a, i) {
-		 return (Math.log10(Math.sqrt(a.reduce(function(p, c) {
-		   return (p + Math.pow((c - meanfds[i]), 2)); }, 0)) / (meanfds[i])));
-	       });
-	       storeResult("logModulationIndices", modulationIndices);
-	     }
-	     return modulationIndices;
-	   };
-	   
 	   var modindexHistogram = function(domNode) {
 	     // Calculate the modulation index for each source and histogram them.
-	     var modindices = getModulationIndices();
+	     var modindices = fetchResult("logSourceModulationIndices");
 	     plotHistogram(modindices, domNode, { 'xaxis': { 'title': "log(Modulation index)" },
 						  'yaxis': { 'title': "Number of sources" } });
 	   };
 
 	   var defectModindexHistogram = function(domNode) {
 	     var defs = fetchResult("logDefects");
-	     var modindices = getModulationIndices();
+	     var modindices = fetchResult("logModulationIndices");
 
 	     plot2DHistogram(defs, modindices, domNode, {
 	       'xaxis': { 'title': "log(Defect [%])" },
@@ -334,7 +423,8 @@ require( [ "./atese-common.js", "dojo/dom", "dojo/dom-construct", "dojo/when",
 
 	   var closurephaseModindexHistogram = function(domNode) {
 	     var clophas = fetchResult("closurePhases");
-	     var modindices = getModulationIndices();
+	     var modindices = fetchResult("logModulationIndices");
+	     
 	     plot2DHistogram(clophas, modindices, domNode, {
 	       'histnorm': 'percent',
 	       'xaxis': { 'title': "Closure Phase [deg]", 'type': 'linear' },
@@ -349,14 +439,15 @@ require( [ "./atese-common.js", "dojo/dom", "dojo/dom-construct", "dojo/when",
 
 	     if (sizeSelector === 'modindex') {
 	       // Get the modulation indices.
-	       var modindices = getModulationIndices();
+	       var modindices = fetchResult("logSourceModulationIndices");
 	       markerSizes = modindices.map(function(a) { return (14 + a * 10); });
 	     } else if (sizeSelector === 'avgflux') {
-	       getModulationIndices();
 	       var mfds = fetchResult("logMeanFluxDensities");
 	       markerSizes = mfds.map(function(a) { return (14 + a * 10); });
 	     } else if (sizeSelector === 'numobs') {
-	       var nmeas = getNumberMeasurements();
+	       var nmeas = fetchResult("logAllNumMeasurements").map(function(a) {
+		 return a[0];
+	       });
 	       markerSizes = nmeas.map(function(a) { return (Math.pow(10, a)); });
 	     } else if (sizeSelector === 'constant') {
 	       markerSizes = 7;
@@ -367,7 +458,7 @@ require( [ "./atese-common.js", "dojo/dom", "dojo/dom-construct", "dojo/when",
 	   
 	   var skyPlot = function(domNode) {
 	     // Get the RA and Dec.
-	     var sources = atese.getSourceList();
+	     var sources = atese.getSourceList_minmax();
 	     var coords = sources.map(function(a) {
 	       var c = atese.getSourceProperty(a, "coordinate");
 	       var j = c.toJ2000();
@@ -403,12 +494,17 @@ require( [ "./atese-common.js", "dojo/dom", "dojo/dom-construct", "dojo/when",
 	     Plotly.newPlot(domNode, data, layout);
 	   };
 
-	   var addSlider = function(id, min, max) {
+	   var genSliderId = function(id) {
+	     return ('slider-' + id);
+	   };
+	   
+	   var addSlider = function(pid, min, max) {
 	     // Make a slider to allow for range selection.
+	     var id = genSliderId(pid);
 	     var sliderDiv = domConstruct.create('div', {
 	       'id': id,
 	       'class': 'slider-div'
-	     }, dom.byId('update-button'), 'before');
+	     }, dom.byId(pid), 'before');
 
 	     // The label.
 	     var labid = id + '-name-label';
@@ -488,9 +584,10 @@ require( [ "./atese-common.js", "dojo/dom", "dojo/dom-construct", "dojo/when",
 	     return labid;
 	   };
 
-	   var getSliderValues = function(id) {
+	   var getSliderValues = function(pid) {
 	     // We return the low and high values for the slider with the
 	     // specified id.
+	     var id = genSliderId(pid);
 	     var lowid = id + '-indicator-low';
 	     var highid = id + '-indicator-high';
 	     if (dom.byId(lowid) && dom.byId(highid)) {
@@ -503,25 +600,48 @@ require( [ "./atese-common.js", "dojo/dom", "dojo/dom-construct", "dojo/when",
 	   var makeSliders = function() {
 	     // This routine adds all the sliders that we want to the page.
 	     var fdsMinMax = fetchResult('minmax_logFluxDensitiesNear5.5');
-	     domAttr.set(addSlider('fds-slider', fdsMinMax.min, fdsMinMax.max),
+	     domAttr.set(addSlider('vis-fd-near55', fdsMinMax.min, fdsMinMax.max),
 			 'innerHTML', "log(fd near 5.5GHz)");
 	     
 	     var fmsMinMax = fetchResult('minmax_logFluxDensitiesAt5.5');
-	     domAttr.set(addSlider('fms-slider', fmsMinMax.min, fmsMinMax.max),
+	     domAttr.set(addSlider('vis-fd-eval55', fmsMinMax.min, fmsMinMax.max),
 			 'innerHTML', "log(fd at 5.5GHz)");
 
 	     var defMinMax = fetchResult('minmax_logDefects');
-	     domAttr.set(addSlider('defect-slider', defMinMax.min, defMinMax.max),
+	     domAttr.set(addSlider('vis-defect', defMinMax.min, defMinMax.max),
 			 'innerHTML', "log(defect [%])");
+
+	     var clpMinMax = fetchResult('minmax_closurePhases');
+	     domAttr.set(addSlider('vis-closurephase', clpMinMax.min, clpMinMax.max),
+			 'innerHTML', "closure phase [deg]");
+
+	     var ftsMinMax = fetchResult('minmax_logFitScatters');
+	     domAttr.set(addSlider('vis-fitrms', ftsMinMax.min, ftsMinMax.max),
+			 'innerHTML', "log(fit scatter [Jy])");
+
+	     var numMinMax = fetchResult('minmax_logNumMeasurements');
+	     domAttr.set(addSlider('vis-nmeasurements', numMinMax.min, numMinMax.max),
+			 'innerHTML', "log(number measurements)");
+
+	     var solMinMax = fetchResult('minmax_solarAngles');
+	     domAttr.set(addSlider('vis-solarangles', solMinMax.min, solMinMax.max),
+			 'innerHTML', "solar distance [deg]");
+
+	     var modMinMax = fetchResult('minmax_logModulationIndices');
+	     domAttr.set(addSlider('vis-modindex', modMinMax.min, modMinMax.max),
+			 'innerHTML', "log(modulation index)");
 	     
 	     on(dom.byId('button-update'), 'click', function() {
 	       // Get all the ranges.
-	       var fdsRange = getSliderValues('fds-slider');
-	       var fmsRange = getSliderValues('fms-slider');
-	       var defRange = getSliderValues('defect-slider');
-
-	       // Clear out our data storage.
-	       resStor = {};
+	       var fdsRange = getSliderValues('vis-fd-near55');
+	       var fmsRange = getSliderValues('vis-fd-eval55');
+	       var defRange = getSliderValues('vis-defect');
+	       var clpRange = getSliderValues('vis-closurephase');
+	       var ftsRange = getSliderValues('vis-fitrms');
+	       var numRange = getSliderValues('vis-nmeasurements');
+	       var solRange = getSliderValues('vis-solarangles');
+	       var modRange = getSliderValues('vis-modindex');
+	       
 	       // Reset the restrictions.
 	       atese.resetSelection_minmax();
 
@@ -529,7 +649,11 @@ require( [ "./atese-common.js", "dojo/dom", "dojo/dom-construct", "dojo/when",
 	       atese.restrictSelection_minmax('closest5.5', fdsRange[0], fdsRange[1]);
 	       atese.restrictSelection_minmax('at5.5', fmsRange[0], fmsRange[1]);
 	       atese.restrictSelection_minmax('defect', Math.pow(10, fmsRange[0]), Math.pow(10, fmsRange[1]));
-	       
+	       atese.restrictSelection_minmax('closurePhase', clpRange[0], clpRange[1]);
+	       atese.restrictSelection_minmax('fitScatter', ftsRange[0], ftsRange[1]);
+	       atese.restrictSelection_minmax('numMeasurements', numRange[0], numRange[1]);
+	       atese.restrictSelection_minmax('solarAngles', solRange[0], solRange[1]);
+	       atese.restrictSelection_minmax('modIndex', modRange[0], modRange[1]);
 	       visualise();
 	     });
 	   };
@@ -543,11 +667,24 @@ require( [ "./atese-common.js", "dojo/dom", "dojo/dom-construct", "dojo/when",
 	     }
 	     
 	     necessaryComputations();
-	     if (!firstVisualise) {
-	       measurementFilter();
+	     if (firstVisualise) {
+	       makeSliders();
+	     }
+	     measurementFilter();
+	     if (firstVisualise) {
+	       console.log("excluding measurements:");
+	       var t = fetchResult("allMeasurements");
+	       var u = fetchResult("allReasons");
+	       var v = t.map(function(a, i) {
+		 return (a + "(" + u[i] + ")");
+	       });
+	       console.log(v);
 	     }
 	     
-	     domAttr.set('nsources-selected', 'innerHTML', fetchResult("numSelectedSources"));
+	     var pctSelectedSources = number.round((fetchResult("numSelectedSources") /
+						    fetchResult("numAllSources")) * 100, 1);
+	     domAttr.set('nsources-selected', 'innerHTML', fetchResult("numSelectedSources") +
+			" (" + pctSelectedSources + "%)");
 	     
 	     fdsHistogram(dom.byId('vis-fd-near55'));
 	     fmsHistogram(dom.byId('vis-fd-eval55'));
@@ -585,6 +722,6 @@ require( [ "./atese-common.js", "dojo/dom", "dojo/dom-construct", "dojo/when",
 	     
 	   // Grab the data, then do the visualisations.
 	   atese.setSorting('random');
-	   atese.getCatalogue().then(visualise).then(makeSliders);
+	   atese.getCatalogue().then(visualise); //.then(makeSliders);
 
 	 });

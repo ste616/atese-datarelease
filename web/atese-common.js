@@ -1,6 +1,6 @@
 define( [ "dojo/request/xhr", "astrojs/skyCoordinate", "astrojs/base", "astrojs/coordinate",
-	  "astrojs/time", "dojo/_base/lang" ],
-	function(xhr, skyCoord, astrojs, coord, astroTime, lang) {
+	  "astrojs/time", "dojo/_base/lang", "dojo/number" ],
+	function(xhr, skyCoord, astrojs, coord, astroTime, lang, number) {
 
 	   // The object we return to our caller.
 	   var rObj = {};
@@ -125,6 +125,7 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate", "astrojs/base", "astrojs/
 	    // Compute the minimum and maximum values for each parameter that it makes
 	    // sense for.
 	    _sourceStorage[s].minmax = {
+	      'closurePhase': {},
 	      'absClosurePhase': {},
 	      'defect': {},
 	      'fluxDensity': {},
@@ -141,7 +142,8 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate", "astrojs/base", "astrojs/
 	      _calculate_minmax(_getValue(_sourceStorage[s], [ 'fluxDensityFit', 'closest5.5', 1 ]).map(Math.log10));
 	    _sourceStorage[s].minmax['fitScatter'] =
 	      _calculate_minmax(_getValue(_sourceStorage[s], [ 'fluxDensityFit', 'fitScatter' ]).map(Math.log10));
-
+	    _sourceStorage[s].minmax['numMeasurements'] =
+	      _calculate_minmax([ Math.log10(_sourceStorage[s]['mjd'].length) ]);
 	  };
 	   
 	   // Method to go through a list of sources coming from the Node.js server
@@ -170,6 +172,37 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate", "astrojs/base", "astrojs/
 		       'frame': "J2000"
 		       });
 		   _sourceStorage[s].coordinate = sc;
+		   // Replace any -999 in the closure phases with the average value.
+		   if (dref[s].closurePhase.indexOf(-999) > -1) {
+		     var filclp = dref[s].closurePhase.filter(_scrubArray(-999));
+		     var avgclp = number.round(filclp.reduce(function(p, c) {
+		       return (p + c);
+		     }, 0) / (filclp.length || 1), 3);
+		     var tmpclp = dref[s].closurePhase.map(function(a) {
+		       if (a === -999) {
+			 return avgclp;
+		       }
+		       return a;
+		     });
+		     dref[s].closurePhase = tmpclp;
+		   }
+		   // Replace any 0 in the defects with 0.1.
+		   if (dref[s].defect.indexOf(0) > -1) {
+		     var tmpdef = dref[s].defect.map(function(a) {
+		       if (a === 0) {
+			 return 0.1;
+		       }
+		       return a;
+		     });
+		     dref[s].defect = tmpdef;
+		   }
+		   // Replace any 0 in the fit scatters with 0.001.
+		   for (var i = 0; i < dref[s].fluxDensityFit.length; i++) {
+		     if (dref[s].fluxDensityFit[i].fitScatter === 0) {
+		       dref[s].fluxDensityFit[i].fitScatter = 0.001;
+		     }
+		   }
+		   
 		   // Compute the absolute value of the closure phase.
 		   _sourceStorage[s].absClosurePhase =
 		     dref[s].closurePhase.map(Math.abs);
@@ -1058,6 +1091,21 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate", "astrojs/base", "astrojs/
 	    return n;
 	  };
 	  rObj.countSelection_minmax = _countSelection_minmax;
+
+	  // Get the list of selected sources in the requested order.
+	  var _getSourceList_minmax = function() {
+	    var sl = [];
+	    // Check for the cached version.
+	    if (typeof(_sourceLists[_sortMethod]) !== 'undefined') {
+	      for (var i = 0; i < _sourceLists[_sortMethod].length; i++) {
+		if (_sourceStorage[_sourceLists[_sortMethod][i]].minmax.selected === true) {
+		  sl.push(_sourceLists[_sortMethod][i]);
+		}
+	      }
+	    }
+	    return sl;
+	  };
+	  rObj.getSourceList_minmax = _getSourceList_minmax;
 	  
 	   // Return our object.
 	   return rObj;

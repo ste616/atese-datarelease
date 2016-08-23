@@ -15,27 +15,41 @@
       .visPlot { width: 99%; margin: 0; padding: 0; }
       .visSpan { clear: both; }
       .visSkyPlot { height: 1000px; }
-      .slider-div { width: 70%; padding: 2em; padding-left: 5%; clear: both; margin-bottom: 2em; }
-      .slider-name-span { float: left; margin: 0.4em; font-weight: bold; width: 20%; text-align: right;}
+      .slider-div { width: 100%; padding: 2em; clear: both; margin-bottom: 0.5em; }
+      .slider-name-span { float: left; margin: 0.4em; font-weight: bold; text-align: right;}
       .slider-slider { float: left; width: 50%; margin: 0.2em 2em; }
-      .slider-input { float: left; width: 10%; margin: 0.2em; }
+      .slider-input { float: left; width: 4em; margin: 0.2em; }
       #update-button { clear: both; width: 70%; padding: 2em; padding-left: 5%; margin: 1em; }
       #button-update { font-weight: bold; background-color: yellow; width: 100%;}
       #data-selectors { float: left; width: 80%; }
       #data-nsources { float: right; padding: 1em; padding-right: 3em; text-align: center; }
       #nsources-selected, #nmeasurements-shown { font-size: 3em; font-weight: bold; }
       .error { color: red; }
+      .instructions div { width: 90%; padding: 0.1em; padding-left: 1em; margin-bottom: 0.4em; }
     </style>
   </head>
 
   <body>
     <div id="title-area">
       <h1>ATESE Data Visualisation</h1>
-      <h3>Beta_2016-July-19</h3>
+      <h3>Beta_2016-August-22</h3>
     </div>
     <div id="visualisation-area">
       <div id="data-selectors">
-
+	<div class="instructions">
+	  <div>
+	    Use the sliders in the panels below to select your desired parameter ranges, and then
+	    hit the "Update Plots" button to remake the plots. Any measurement that meets all of
+	    the criteria is considered valid, and the number of such measurements is shown to the
+	    right; the number of sources that these measurements come from is also shown.
+	  </div>
+	  <div>
+	    For graphs with "number of measurements" as the y-axis, only measurements that
+	    meet your criteria will be shown. For graphs with "number of sources" as the y-axis,
+	    all measurements for the sources which have at least one measurement that meets your
+	    criteria will be shown.
+	  </div>
+	</div>
 	<div id="update-button">
 	  <button type="button" id="button-update">UPDATE PLOTS</button>
 	</div>
