@@ -3,6 +3,9 @@ var dataRelease = require("./datarelease_catalogue.json");
 
 var ra2decimal = function(r) {
   // Convert a string representing R.A. into a decimal number (keeping it in hours).
+    if (typeof r === 'undefined') {
+	return 0;
+    }
   var e = r.split(":");
   var d = parseFloat(e[0]) + (parseFloat(e[1]) / 60.0) + (parseFloat(e[2]) / 3600.0);
   return d;

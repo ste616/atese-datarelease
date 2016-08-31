@@ -917,6 +917,7 @@ require( [ "dojo/dom-construct", "dojo/dom", "astrojs/base", "dojo/number", "./a
 	       return;
 	     }
 	     // Craft the destination.
+	     selectedSources = selectedSources.map(function(t) { return t.replace("+", "%2B"); });
 	     var tgt = location.protocol + "//" +
 		 location.hostname + "/cgi-bin/datarelease_extract_sources_cgi.pl" +
 		 "?sources=" + selectedSources.join(",");
