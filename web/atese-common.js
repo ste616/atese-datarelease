@@ -161,7 +161,7 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate", "astrojs/base", "astrojs/
 		   _sourceStorage[s] = dref[s];
 		   // Turn the right ascension and declination into a SkyCoord.
 		   var l = dref[s].rightAscension.length - 1;
-		   if (l > 0) {
+		   if (l >= 0) {
 		     var sc = skyCoord.new({
 		       'ra': {
 			 'value': astrojs.hexa2turns(dref[s].rightAscension[l], {

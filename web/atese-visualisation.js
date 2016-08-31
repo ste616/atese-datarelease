@@ -1,6 +1,7 @@
 require( [ "./atese-common.js", "dojo/dom", "dojo/dom-construct", "dojo/when",
-	   "dojo/on", "dojo/_base/lang", "dojo/dom-attr", "dojo/dom-class", "dojo/number" ],
-	 function(atese, dom, domConstruct, when, on, lang, domAttr, domClass, number) {
+	   "dojo/on", "dojo/_base/lang", "dojo/dom-attr", "dojo/dom-class", "dojo/number",
+	   "atnf/base" ],
+	 function(atese, dom, domConstruct, when, on, lang, domAttr, domClass, number, atnf) {
 
 	   var resStor = {};
 	   var evaluationRoutines = {};
@@ -461,9 +462,14 @@ require( [ "./atese-common.js", "dojo/dom", "dojo/dom-construct", "dojo/when",
 	     var sources = atese.getSourceList_minmax();
 	     var coords = sources.map(function(a) {
 	       var c = atese.getSourceProperty(a, "coordinate");
-	       var j = c.toJ2000();
-	       return [ j.rightAscension.toDegrees() - 180,
-			j.declination.toDegrees() ];
+	       if (c === null || !atnf.isSkyCoordinate(c)) {
+		 console.log(a + " is broken");
+		 return [ 0, 0 ];
+	       } else {
+		 var j = c.toJ2000();
+		 return [ j.rightAscension.toDegrees() - 180,
+			  j.declination.toDegrees() ];
+	       }
 	     });
 	     var lon = coords.map(function(a) { return a[0] });
 	     var lat = coords.map(function(a) { return a[1] });
