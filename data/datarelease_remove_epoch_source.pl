@@ -6,7 +6,9 @@ use strict;
 my $od = "/DATA/KAPUTAR_4/ste616/data_reduction/C2914/datarelease";
 
 # The epoch name to remove.
-my $epname = $ARGV[0];
+my $epname = shift @ARGV;
+# The source names to remove from that epoch.
+my @srcnames = @ARGV;
 
 # Begin by making a backup file.
 my $catname = $od."/datarelease_catalogue.json";
@@ -35,14 +37,24 @@ if (!-d $odt) {
 
 # Make a backup of the epoch directory.
 print "Backing up epoch directory to $odt.bak\n";
-print "mv $odt $odt.bak\n";
-system "mv $odt $odt.bak";
+print "cp -rv $odt $odt.bak\n";
+system "cp -rv $odt $odt.bak";
 
 my @epelems = ( "closurePhase", "declination", "defect", "epochs",
 		"fluxDensity", "fluxDensityFit", "hourAngle", "mjd",
 		"rightAscension", "arrayConfigurations", "solarAngles" );
 
 foreach my $s (keys $catalogue) {
+    my $c = 0;
+    for (my $i = 0; $i <= $#srcnames; $i++) {
+	if ($srcnames[$i] eq $s) {
+	    $c = 1;
+	    last;
+	}
+    }
+    if ($c == 0) {
+	next;
+    }
     print "Searching source $s\n";
     my $eind = -1;
     for (my $i = 0; $i <= $#{$catalogue->{$s}->{'epochs'}}; $i++) {
