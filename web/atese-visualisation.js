@@ -648,7 +648,7 @@ require( [ "./atese-common.js", "dojo/dom", "dojo/dom-construct", "dojo/when",
 	       // Go through and make the selections.
 	       atese.restrictSelection_minmax('closest5.5', fdsRange[0], fdsRange[1]);
 	       atese.restrictSelection_minmax('at5.5', fmsRange[0], fmsRange[1]);
-	       atese.restrictSelection_minmax('defect', Math.pow(10, fmsRange[0]), Math.pow(10, fmsRange[1]));
+	       atese.restrictSelection_minmax('defect', Math.pow(10, defRange[0]), Math.pow(10, defRange[1]));
 	       atese.restrictSelection_minmax('closurePhase', clpRange[0], clpRange[1]);
 	       atese.restrictSelection_minmax('fitScatter', ftsRange[0], ftsRange[1]);
 	       atese.restrictSelection_minmax('numMeasurements', numRange[0], numRange[1]);

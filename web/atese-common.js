@@ -161,17 +161,21 @@ define( [ "dojo/request/xhr", "astrojs/skyCoordinate", "astrojs/base", "astrojs/
 		   _sourceStorage[s] = dref[s];
 		   // Turn the right ascension and declination into a SkyCoord.
 		   var l = dref[s].rightAscension.length - 1;
-		   var sc = skyCoord.new({
+		   if (l > 0) {
+		     var sc = skyCoord.new({
 		       'ra': {
-			   'value': astrojs.hexa2turns(dref[s].rightAscension[l], {
-			       'units': "hours"
-			   }),
-			   'units': "turns"
+			 'value': astrojs.hexa2turns(dref[s].rightAscension[l], {
+			   'units': "hours"
+			 }),
+			 'units': "turns"
 		       },
 		       'dec': dref[s].declination[l],
 		       'frame': "J2000"
-		       });
-		   _sourceStorage[s].coordinate = sc;
+		     });
+		     _sourceStorage[s].coordinate = sc;
+		   } else {
+		     _sourceStorage[s].coordinate = null;
+		   }
 		   // Replace any -999 in the closure phases with the average value.
 		   if (dref[s].closurePhase.indexOf(-999) > -1) {
 		     var filclp = dref[s].closurePhase.filter(_scrubArray(-999));
