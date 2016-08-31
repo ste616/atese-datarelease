@@ -322,12 +322,15 @@ require( [ "dojo/dom-construct", "dojo/dom", "astrojs/base", "dojo/number", "./a
 	     // of epochs that it has been observed in.
 	     // Get the sky coordinate.
 	     var sc = atese.getSourceProperty(src, "coordinate");
-	     var ra = astrojs.turns2hexa(sc.toJ2000().rightAscension.toTurns(), {
-	       'units': "hours", 'precision': 1, 'alwaysSigned': false
-	     });
-	     var dec = astrojs.turns2hexa(sc.toJ2000().declination.toTurns(), {
-	       'units': "degrees", 'precision': 1, 'alwaysSigned': true
-	     });
+	     var ra = "000", dec = "000";
+	     if (sc != null) {
+	       ra = astrojs.turns2hexa(sc.toJ2000().rightAscension.toTurns(), {
+		 'units': "hours", 'precision': 1, 'alwaysSigned': false
+	       });
+	       dec = astrojs.turns2hexa(sc.toJ2000().declination.toTurns(), {
+		 'units': "degrees", 'precision': 1, 'alwaysSigned': true
+	       });
+	     }
 	     
 	     var titleText = src.toUpperCase() + " ( " + ra + " " + dec + " ) [ " +
 		 nEpochs + " epoch" + ((nEpochs > 1) ? "s" : "") + " ]";
