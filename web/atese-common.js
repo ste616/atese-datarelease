@@ -1,4 +1,4 @@
-define( [ "dojo/request/xhr", "astrojs/skyCoordinate", "astrojs/base", "astrojs/coordinate",
+define( [ "dojo/request/xhr", "atnf/skyCoordinate", "astrojs/base", "atnf/coordinate",
 	  "astrojs/time", "dojo/_base/lang", "dojo/number" ],
 	function(xhr, skyCoord, astrojs, coord, astroTime, lang, number) {
 

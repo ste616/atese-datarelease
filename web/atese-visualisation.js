@@ -456,29 +456,111 @@ require( [ "./atese-common.js", "dojo/dom", "dojo/dom-construct", "dojo/when",
 
 	     return markerSizes;
 	   };
+
+	   var equatorialToLonLat = function(c, m) {
+	     // Take a sky coordinate and return Lon/Lat for J2000 equatorial.
+	     if (c !== null && atnf.isSkyCoordinate(c)) {
+	       var j = c.toJ2000();
+	       if (m === 'degrees') {
+		 return { 'lon': j.rightAscension.toDegrees() - 180,
+			  'lat': j.declination.toDegrees() };
+	       } else if (m === 'string') {
+		 var ra = atnf.turns2hexa(j.rightAscension.toTurns(), { 'precision': 1, 'units': 'hours' });
+		 var dec = atnf.turns2hexa(j.declination.toTurns(), { 'precision': 0 });
+		 var rstring = "RA: " + ra + "<br />Dec: " + dec;
+		 return rstring;
+	       }
+	     } else {
+	       if (m === 'degrees') {
+		 return { 'lon': 0, 'lat': 0 };
+	       } else if (m === 'string') {
+		 return ("RA: 000\nDec: 000");
+	       }
+	     }
+	   };
+
+	   var galacticToLonLat = function(c, m) {
+	     // Take a sky coordinate and return Lon/Lat for Galactic.
+	     if (c !== null && atnf.isSkyCoordinate(c)) {
+	       var j = c.toGalactic();
+	       if (m === 'degrees') {
+		 return { 'lon': j.longitude.toDegrees(),
+			  'lat': j.latitude.toDegrees() };
+	       } else if (m === 'string') {
+		 var lon = number.round(j.longitude.toDegrees(), 3);
+		 var lat = number.round(j.latitude.toDegrees(), 3);
+		 var rstring = "(l,b) = (" + lon + "," + lat + ")";
+		 return rstring;
+	       }
+	     } else {
+	       if (m === 'degrees') {
+		 return { 'lon': 0, 'lat': 0 };
+	       } else if (m === 'string') {
+		 return "(l,b) = (000,000)";
+	       }
+	     }
+	   };
 	   
-	   var skyPlot = function(domNode) {
-	     // Get the RA and Dec.
+	   var selectedCoordinateSystem = function() {
+	     var coordinateSelectorIdx = dom.byId('skyplot-coordinate-system').selectedIndex;
+	     var coordinateSelector = dom.byId('skyplot-coordinate-system').
+		 options[coordinateSelectorIdx].value;
+	     return coordinateSelector;
+	   };
+	   
+	   var markerCoordinates = function() {
+	     // Return the coordinates of the sources in the selected coordinate
+	     // system.
+	     var coordinateSelector = selectedCoordinateSystem();
 	     var sources = atese.getSourceList_minmax();
+	     var mfunc = null;
+	     if (coordinateSelector === "equatorial") {
+	       mfunc = equatorialToLonLat;
+	     } else if (coordinateSelector === "galactic") {
+	       mfunc = galacticToLonLat;
+	     }
 	     var coords = sources.map(function(a) {
 	       var c = atese.getSourceProperty(a, "coordinate");
 	       if (c === null || !atnf.isSkyCoordinate(c)) {
 		 console.log(a + " is broken");
-		 return [ 0, 0 ];
-	       } else {
-		 var j = c.toJ2000();
-		 return [ j.rightAscension.toDegrees() - 180,
-			  j.declination.toDegrees() ];
 	       }
+	       return mfunc(c, "degrees");
 	     });
-	     var lon = coords.map(function(a) { return a[0] });
-	     var lat = coords.map(function(a) { return a[1] });
+	     var lon = coords.map(function(a) { return a.lon; });
+	     var lat = coords.map(function(a) { return a.lat; });
+	     return { 'lon': lon, 'lat': lat };
+	   };
 
+	   var markerHover = function() {
+	     // Return a formatted text box for each source, dependent on the
+	     // selected coordinate system.
+	     var coordinateSelector = selectedCoordinateSystem();
+	     var sources = atese.getSourceList_minmax();
+	     var mfunc = null;
+	     if (coordinateSelector === "equatorial") {
+	       mfunc = equatorialToLonLat;
+	     } else if (coordinateSelector === "galactic") {
+	       mfunc = galacticToLonLat;
+	     }
+	     var text = sources.map(function(a) {
+	       var c = atese.getSourceProperty(a, "coordinate");
+	       var co = mfunc(c, "string");
+	       return a + "<br />" + co;
+	     });
+	     return text;
+	   };
+	   
+	   var skyPlot = function(domNode) {
+	     // Get the RA and Dec.
+	     var sources = atese.getSourceList_minmax();
+	     var latLonData = markerCoordinates();
+	     
 	     var markerSizes = getMarkerSizes();
+	     var markerText = markerHover();
 	     var data = [ { 'type': 'scattergeo', 'mode': 'markers',
-			    'text': sources, 'lon': lon, 'lat': lat,
+			    'text': markerText, 'lon': latLonData.lon, 'lat': latLonData.lat,
 			    'marker': { 'size': markerSizes, 'line': { 'width': 1 } },
-			    'name': 'C2914' } ];
+			    'name': 'C2914', 'hoverinfo': "text" } ];
 	     var layout = {
 	       'title': "Survey sources",
 	       'geo': {
@@ -713,11 +795,21 @@ require( [ "./atese-common.js", "dojo/dom", "dojo/dom-construct", "dojo/when",
 	       on(dom.byId('skyplot-marker-selector'), 'change', function() {
 		 var markerSizes = getMarkerSizes();
 		 var graphDiv = dom.byId('vis-skypos');
-		 console.log(graphDiv.data);
-		 console.log(graphDiv.layout);
+		 var markerText = markerHover();
 		 graphDiv.data[0].marker.size = markerSizes;
 		 graphDiv.layout.geo.lonaxis.range = [];
 		 graphDiv.layout.geo.lataxis.range = [];
+		 graphDiv.data[0].text = markerText;
+		 Plotly.redraw(graphDiv);
+	       });
+	       // And the coordinate mode changer.
+	       on(dom.byId('skyplot-coordinate-system'), 'change', function() {
+		 var latLonData = markerCoordinates();
+		 var graphDiv = dom.byId('vis-skypos');
+		 var markerText = markerHover();
+		 graphDiv.data[0].lon = latLonData.lon;
+		 graphDiv.data[0].lat = latLonData.lat;
+		 graphDiv.data[0].text = markerText;
 		 Plotly.redraw(graphDiv);
 	       });
 	     }
