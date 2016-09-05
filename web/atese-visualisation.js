@@ -565,7 +565,7 @@ require( [ "./atese-common.js", "dojo/dom", "dojo/dom-construct", "dojo/when",
 	       'title': "Survey sources",
 	       'geo': {
 		 'projection': { 'type': 'hammer' },
-		 'resolution': 1,
+		 'resolution': 50,
 		 'lonaxis': {
 		   'range': [ -180, 180 ],
 		   'showgrid': true,
@@ -576,7 +576,14 @@ require( [ "./atese-common.js", "dojo/dom", "dojo/dom-construct", "dojo/when",
 		   'showgrid': true
 		 },
 		 'showrivers': false, 'showlakes': false, 'showland': false,
-		 'showcoastlines': false
+		 'showcoastlines': false,
+		 'annotations': [
+		   {
+		     'x': 20, 'y': 20, 'xref': 'x', 'yref': 'y', 'text': 'Test',
+		     'showarrow': true, 'arrowhead': 100, 'ax': 20, 'ay': 20,
+		     'font': { 'color': "black", 'size': 100 }
+		   }
+		 ]
 	       }
 	     };
 	     Plotly.newPlot(domNode, data, layout);
@@ -796,11 +803,14 @@ require( [ "./atese-common.js", "dojo/dom", "dojo/dom-construct", "dojo/when",
 		 var markerSizes = getMarkerSizes();
 		 var graphDiv = dom.byId('vis-skypos');
 		 var markerText = markerHover();
-		 graphDiv.data[0].marker.size = markerSizes;
-		 graphDiv.layout.geo.lonaxis.range = [];
-		 graphDiv.layout.geo.lataxis.range = [];
-		 graphDiv.data[0].text = markerText;
-		 Plotly.redraw(graphDiv);
+		 //graphDiv.data[0].marker.size = markerSizes;
+		 //graphDiv.layout.geo.lonaxis.range = [];
+		 //graphDiv.layout.geo.lataxis.range = [];
+		 //graphDiv.data[0].text = markerText;
+		 // Plotly.redraw(graphDiv);
+		 var update = { 'marker.size': [ markerSizes ],
+				'text': [ markerText ] };
+		 Plotly.restyle(graphDiv, update);
 	       });
 	       // And the coordinate mode changer.
 	       on(dom.byId('skyplot-coordinate-system'), 'change', function() {
